@@ -35,6 +35,7 @@ import {
   Zap,
   Sun,
   UploadCloud,
+  Upload,
   Languages,
   BookOpen,
   Copy,
@@ -49,6 +50,7 @@ import {
   Save,
   RefreshCw,
   Maximize2,
+  Minimize2,
   FolderOpen,
   FilePlus,
   FolderPlus,
@@ -94,6 +96,10 @@ import {
   Code2,
   CheckCircle2,
   X,
+  Mic,
+  Info,
+  Drone,
+  Bot,
   GitBranch,
   Bell,
   Download,
@@ -135,9 +141,16 @@ import { sql } from '@codemirror/lang-sql';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
+import { foldGutter, foldKeymap } from '@codemirror/language';
+import { syncReactState, triggerEvent, EditorAPI } from './services/extensionApi';
+
 
 const getCodeMirrorExtensions = (language: string) => {
-  const extensions = [EditorView.lineWrapping];
+  const extensions = [
+    EditorView.lineWrapping,
+    foldGutter(),
+    keymap.of(foldKeymap)
+  ];
   switch (language) {
     case 'javascript':
     case 'typescript':
@@ -193,7 +206,8 @@ const FONT_OPTIONS: Record<string, string> = {
   'Roboto': 'Roboto, sans-serif',
   'Montserrat': 'Montserrat, sans-serif',
   'Sora': 'Sora, sans-serif',
-  'Manrope': 'Manrope, sans-serif'
+  'Manrope': 'Manrope, sans-serif',
+  'Fira Code': '"Fira Code", monospace'
 };
 
 import 'katex/dist/katex.min.css';
@@ -1026,6 +1040,8 @@ const MemoizedCodeEditor = React.memo(({
   const [inlineAILoading, setInlineAILoading] = useState(false);
   const [isCtrlActive, setIsCtrlActive] = useState(false);
   const [isShiftActive, setIsShiftActive] = useState(false);
+  const [isMobileRow1Collapsed, setIsMobileRow1Collapsed] = useState(false);
+  const [isMobileRow2Collapsed, setIsMobileRow2Collapsed] = useState(false);
 
   const viewRef = useRef<any>(null);
 
@@ -1333,7 +1349,7 @@ Instructions: Modify the code according to the task. Return ONLY the modified co
                       }}
                     />
                   ) : (
-                    <FileIcon size={14} className={`${iconColor}`} />
+                    <VSCodeDefaultFileIcon className="w-3.5 h-3.5 shrink-0" />
                   )}
                   <span className={`${isSelected ? 'text-[#ffffff] font-medium' : 'text-[#858585]'} truncate tracking-tight`}>
                     {fname.split('/').pop()}
@@ -1358,27 +1374,23 @@ Instructions: Modify the code according to the task. Return ONLY the modified co
           >
             <Plus size={16} />
           </button>
-          <button 
-            onClick={onPlay}
-            className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
-            title="Run Code"
-          >
-            <Play size={16} fill="currentColor" />
-          </button>
-          <button 
-            onClick={() => setShowInlineAI(true)}
-            className="p-1.5 hover:bg-white/5 text-orange-400 hover:text-white transition-colors"
-            title="AI Inline Edit (Ctrl+K)"
-          >
-            <Sparkles size={16} />
-          </button>
+          {language === 'html' && (
+            <button 
+              onClick={onPlay}
+              className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
+              title="Run Code"
+            >
+              <Play size={16} fill="currentColor" />
+            </button>
+          )}
           <button 
             onClick={onToggleSplit}
-            className="hidden md:flex p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
+            className="hidden p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
             title="Split Editor"
           >
-            <Maximize size={16} />
+            <Codicon name="split-horizontal" size={16} />
           </button>
+
           {isSplitPane && (
             <button 
               onClick={onClosePane}
@@ -1553,118 +1565,70 @@ Instructions: Modify the code according to the task. Return ONLY the modified co
               </React.Suspense>
             </div>
             )}
-      </div>
-
-      {/* VS Code Style Editor Status Bar */}
-      <div className="hidden md:flex h-[22px] items-center justify-between px-2 text-[11px] font-sans select-none shrink-0" style={{ backgroundColor: '#181818', color: '#cccccc', borderTop: '1px solid #2b2b2b' }}>
-        <div className="flex items-center gap-4 h-full">
-          <div className="flex items-center gap-1 hover:bg-white/10 px-1.5 h-full cursor-pointer transition-colors">
-            <GitBranch size={12} />
-            <span>main*</span>
+            {/* Professional Compact Mobile Keyboard Toolbar - Improved Multi-Row Layout */}
+      <div className="bg-[#2d2d2d] border-t border-black flex flex-col shrink-0 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_10px_rgba(0,0,0,0.5)]">
+        {/* Toggle Arrow Row */}
+        <div className="h-8 flex items-center justify-end px-3 bg-[#252525] border-b border-black/30 gap-3">
+          {/* Row 1 Toggle */}
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => setIsMobileRow1Collapsed(!isMobileRow1Collapsed)}
+              className="w-6 h-6 rounded-full bg-[#3d3d3d] border border-[#555555] flex items-center justify-center text-zinc-300 hover:text-white hover:bg-[#4d4d4d] active:scale-95 transition-all cursor-pointer shadow-md"
+              title="Toggle Row 1 Keyboard"
+            >
+              {isMobileRow1Collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
-          <div className="flex items-center gap-1.5 hover:bg-white/10 px-1.5 h-full cursor-pointer transition-colors">
-            <span className="flex items-center gap-1"><span className="text-[10px]">❌</span> 0</span>
-            <span className="flex items-center gap-1"><span className="text-[10px]">⚠️</span> 0</span>
+
+          <div className="w-[1px] h-3 bg-white/10" />
+
+          {/* Row 2 Toggle */}
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => setIsMobileRow2Collapsed(!isMobileRow2Collapsed)}
+              className="w-6 h-6 rounded-full bg-[#3d3d3d] border border-[#555555] flex items-center justify-center text-zinc-300 hover:text-white hover:bg-[#4d4d4d] active:scale-95 transition-all cursor-pointer shadow-md"
+              title="Toggle Row 2 Keyboard"
+            >
+              {isMobileRow2Collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-3 h-full">
-          <div className="flex items-center hover:bg-white/10 px-1.5 h-full cursor-pointer transition-colors">
-            Ln {cursorPos.row}, Col {cursorPos.column}
-          </div>
-          <div className="flex items-center hover:bg-white/10 px-1.5 h-full cursor-pointer transition-colors">
-            Spaces: 2
-          </div>
-          <div className="flex items-center hover:bg-white/10 px-1.5 h-full cursor-pointer transition-colors">
-            UTF-8
-          </div>
-          <div className="flex items-center hover:bg-white/10 px-1.5 h-full cursor-pointer transition-colors">
-            <Settings size={12} />
-          </div>
-        </div>
-      </div>
 
-      {/* Professional Compact Mobile Keyboard Toolbar - Improved Multi-Row Layout */}
-      <div className="md:hidden bg-[#2d2d2d] border-t border-black flex flex-col shrink-0 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_10px_rgba(0,0,0,0.5)]">
         {/* Row 1: Navigation & Undo/Redo */}
-        <div className="px-1 py-1 flex items-center overflow-x-auto no-scrollbar gap-1.5 custom-scrollbar-hide h-[38px] bg-[#2d2d2d]">
-          <button onClick={() => handleKeyboardAction('left')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronLeft size={16} /></button>
-          <button onClick={() => handleKeyboardAction('up')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronUp size={16} /></button>
-          <button onClick={() => handleKeyboardAction('down')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronDown size={16} /></button>
-          <button onClick={() => handleKeyboardAction('right')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronRight size={16} /></button>
-          <div className="w-[1px] h-4 bg-white/10 mx-0.5 shrink-0" />
-          <button onClick={() => handleKeyboardAction('undo')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><Undo2 size={16} /></button>
-          <button onClick={() => handleKeyboardAction('redo')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><Redo2 size={16} /></button>
-          <div className="w-[1px] h-4 bg-white/10 mx-0.5 shrink-0" />
-          <button onClick={() => handleKeyboardAction('search')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0" title="Find & Replace (Ctrl+F)"><Search size={14} /></button>
-          <button onClick={() => onShowQuickOpen?.()} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0" title="Quick Open (Ctrl+P)"><SearchCode size={14} /></button>
-          <button onClick={() => onShowCommandPalette?.()} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0" title="Command Palette (Ctrl+Shift+P)"><Codicon name="terminal" size={14} /></button>
-          <button onClick={() => handleKeyboardAction('tab')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0"><ArrowRightToLine size={14} /></button>
-          <button onClick={() => handleKeyboardAction('save')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-accent active:bg-[#202020] transition-all shrink-0" title="Save"><Save size={14} /></button>
-        </div>
+        {!isMobileRow1Collapsed && (
+          <div className="px-1 py-1 flex items-center overflow-x-auto no-scrollbar gap-1.5 custom-scrollbar-hide h-[38px] bg-[#2d2d2d]">
+            <button onClick={() => handleKeyboardAction('left')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronLeft size={16} /></button>
+            <button onClick={() => handleKeyboardAction('up')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronUp size={16} /></button>
+            <button onClick={() => handleKeyboardAction('down')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronDown size={16} /></button>
+            <button onClick={() => handleKeyboardAction('right')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><ChevronRight size={16} /></button>
+            <div className="w-[1px] h-4 bg-white/10 mx-0.5 shrink-0" />
+            <button onClick={() => handleKeyboardAction('undo')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><Undo2 size={16} /></button>
+            <button onClick={() => handleKeyboardAction('redo')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"><Redo2 size={16} /></button>
+            <div className="w-[1px] h-4 bg-white/10 mx-0.5 shrink-0" />
+            <button onClick={() => handleKeyboardAction('search')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0" title="Find & Replace (Ctrl+F)"><Search size={14} /></button>
+            <button onClick={() => onShowQuickOpen?.()} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0" title="Quick Open (Ctrl+P)"><SearchCode size={14} /></button>
+            <button onClick={() => onShowCommandPalette?.()} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0" title="Command Palette (Ctrl+Shift+P)"><Codicon name="terminal" size={14} /></button>
+            <button onClick={() => handleKeyboardAction('tab')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-white active:bg-[#202020] transition-all shrink-0"><ArrowRightToLine size={14} /></button>
+            <button onClick={() => handleKeyboardAction('save')} className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#2b2b2b] rounded-[0px] text-accent active:bg-[#202020] transition-all shrink-0" title="Save"><Save size={14} /></button>
+          </div>
+        )}
 
         {/* Row 2: Character Symbols (Middle) */}
-        <div className="px-1 py-1 border-t border-black/20 flex items-center overflow-x-auto no-scrollbar gap-1 custom-scrollbar-hide h-[34px] bg-[#222222]">
-          {['<', '>', '/', '{', '}', '[', ']', ';', '(', ')', '"', "'", ':', '=', '!', '&', '|', '+', '-', '*', '%', '?', '#', '$', '@', '^', '~', '`'].map(char => (
-            <button
-              key={char}
-              onClick={() => insertText(char)}
-              className="w-7 h-6 flex items-center justify-center bg-[#333333] border border-[#555555] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[10px] font-medium text-[#e0e0e0] active:bg-[#111111] transition-all shrink-0"
-            >
-              {char}
-            </button>
-          ))}
-        </div>
-
-        {/* Row 3: Primary Controls (Absolute Bottom Row) */}
-        <div className="px-1 py-1 border-t border-black/30 flex items-center overflow-x-auto no-scrollbar gap-1.5 custom-scrollbar-hide h-[40px] bg-[#1a1a1a]">
-          <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsCtrlActive(!isCtrlActive); viewRef.current?.focus(); }} 
-            className={`h-7 px-2 border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[10px] font-bold transition-all shadow-md shrink-0 ${isCtrlActive ? 'bg-[#007acc] text-white border-white/40 ring-1 ring-accent/50' : 'bg-[#404040] text-white shadow-black/50'}`}
-          >
-            Ctrl
-          </button>
-          <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsShiftActive(!isShiftActive); viewRef.current?.focus(); }} 
-            className={`h-7 px-2 border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[10px] font-bold transition-all shadow-md shrink-0 ${isShiftActive ? 'bg-[#007acc] text-white border-white/40 ring-1 ring-accent/50' : 'bg-[#404040] text-white shadow-black/50'}`}
-          >
-            Shift
-          </button>
-          <div className="w-[1px] h-5 bg-white/10 mx-0.5 shrink-0" />
-          <button 
-            onClick={() => onShowPreview?.(false)} 
-            className="h-7 px-3 bg-[#333333] border border-[#555555] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[9px] font-bold text-white active:bg-[#111111] transition-all shrink-0 tracking-tighter"
-          >
-            Code
-          </button>
-          <button 
-            onClick={() => onShowPreview?.(true)} 
-            className="h-7 px-3 bg-[#333333] border border-[#555555] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[9px] font-bold text-white active:bg-[#111111] transition-all shrink-0 tracking-tighter"
-          >
-            Preview
-          </button>
-          <button 
-            onClick={onOpenFull} 
-            className="h-7 px-3 bg-[#333333] border border-[#555555] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[9px] font-bold text-white active:bg-[#111111] transition-all shrink-0 tracking-tighter"
-          >
-            Full
-          </button>
-          <div className="w-[1px] h-5 bg-white/10 mx-0.5 shrink-0" />
-          <button 
-            onClick={onShowSettings} 
-            className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"
-            title="Settings"
-          >
-            <Settings size={14} />
-          </button>
-          <button 
-            onClick={() => onSetActiveTab?.('terminal')} 
-            className="w-8 h-7 flex items-center justify-center bg-[#404040] border border-[#777777] border-b-[#111111] border-r-[#111111] rounded-[2px] text-white active:bg-[#202020] transition-all shrink-0"
-            title="Terminal"
-          >
-            <TerminalIcon size={14} />
-          </button>
-        </div>
+        {!isMobileRow2Collapsed && (
+          <div className="px-1 py-1 border-t border-black/20 flex items-center overflow-x-auto no-scrollbar gap-1 custom-scrollbar-hide h-[34px] bg-[#222222]">
+            {['<', '>', '/', '{', '}', '[', ']', ';', '(', ')', '"', "'", ':', '=', '!', '&', '|', '+', '-', '*', '%', '?', '#', '$', '@', '^', '~', '`'].map(char => (
+              <button
+                key={char}
+                onClick={() => insertText(char)}
+                className="w-7 h-6 flex items-center justify-center bg-[#333333] border border-[#555555] border-b-[#111111] border-r-[#111111] rounded-[2px] text-[10px] font-medium text-[#e0e0e0] active:bg-[#111111] transition-all shrink-0"
+              >
+                {char}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+    </div>
 
       {/* Paste Fallback Modal */}
       <AnimatePresence mode="wait">
@@ -1749,21 +1713,28 @@ const ChatList = React.memo(({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="flex-1 flex flex-col items-center justify-center py-20 w-full"
+            className="flex-1 flex flex-col items-center justify-center p-4 w-full"
           >
-            <div className="flex flex-col items-center justify-center">
-              <svg className="w-40 h-40 mb-8" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path 
-                  d="M 200 40 L 340 360 L 200 250 L 60 360 Z" 
-                  stroke="currentColor" 
-                  strokeWidth="6" 
-                  strokeLinejoin="round"
-                  className="opacity-80 text-foreground"
-                />
-              </svg>
-              <h1 className="text-[48px] font-semibold text-foreground tracking-tighter m-0" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
-                Revers<span className="font-light opacity-70">X</span>
-              </h1>
+            <div className="flex flex-col items-center gap-4 mb-8 select-none">
+              <div className="w-16 h-16 rounded-[20%] bg-gradient-to-br from-[#007acc] to-[#005a9e] shadow-[0_0_30px_rgba(0,122,204,0.3)] flex items-center justify-center border border-white/10 shrink-0">
+                <svg viewBox="0 0 200 200" width="36" height="36">
+                  <path
+                    d="M 100,10 L 18,188 L 62,158 L 100,132 L 138,158 L 182,188 Z"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="8"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+              <div className="flex flex-col items-center">
+                <h1 className="text-2xl font-extrabold text-[#cccccc] tracking-tight mb-2" style={{ fontFamily: '"Georgia", serif', textDecorationLine: 'underline' }}>ReversX</h1>
+                <div className="px-2 py-0.5 bg-[#252525] border border-[#333] rounded shadow-sm flex items-center gap-1">
+                  <p className="text-white text-[9px] font-medium tracking-wider uppercase italic">Code at the speed of thought.</p>
+                  <Zap size={8} className="text-[#007acc] fill-[#007acc]/20" />
+                </div>
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -1838,25 +1809,126 @@ type TreeNodeType = {
   children: Record<string, TreeNodeType>;
 };
 
+const VSCodeDefaultFileIcon = ({ className = "w-3.5 h-3.5 shrink-0" }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className={className}>
+    <path d="M20.414,2H5V30H27V8.586ZM7,28V4H19v6h6V28Z" fill="#c5c5c5"/>
+  </svg>
+);
+
+const VSCodeFolderClosedIcon = ({ className = "w-3.5 h-3.5 shrink-0" }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className={className}>
+    <path d="M27.5,5.5H18.2L16.1,9.7H4.4V26.5H29.6V5.5Zm0,4.2H19.3l1.1-2.1h7.1Z" fill="#c09553"/>
+  </svg>
+);
+
+const VSCodeFolderOpenIcon = ({ className = "w-3.5 h-3.5 shrink-0" }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className={className}>
+    <path d="M27.4,5.5H18.2L16.1,9.7H4.3V26.5H29.5V5.5Zm0,18.7H6.6V11.8H27.4Zm0-14.5H19.2l1-2.1h7.1V9.7Z" fill="#dcb67a"/>
+    <polygon points="25.7 13.7 0.5 13.7 4.3 26.5 29.5 26.5 25.7 13.7" fill="#dcb67a"/>
+  </svg>
+);
+
 const getOfficialIcon = (ext: string) => {
   const icons: Record<string, string> = {
-    html: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg',
-    css: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg',
-    js: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg',
-    jsx: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg',
-    ts: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg',
-    tsx: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg',
-    py: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg',
-    java: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg',
-    cpp: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg',
-    c: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg',
-    md: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/markdown/markdown-original.svg',
-    json: 'https://raw.githubusercontent.com/otaviopace/devicon/master/icons/json/json-original.svg'
+    html: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/html.svg',
+    css: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/css.svg',
+    js: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/javascript.svg',
+    jsx: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/react.svg',
+    ts: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/typescript.svg',
+    tsx: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/react.svg',
+    py: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/python.svg',
+    java: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/java.svg',
+    cpp: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/cpp.svg',
+    c: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/c.svg',
+    h: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/h.svg',
+    md: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/markdown.svg',
+    json: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/json.svg',
+    svg: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/svg.svg',
+    png: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/image.svg',
+    jpg: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/image.svg',
+    jpeg: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/image.svg',
+    gif: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/image.svg',
+    webp: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/image.svg',
+    ico: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/image.svg',
+    xml: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/xml.svg',
+    yaml: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/yaml.svg',
+    yml: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/yaml.svg',
+    git: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/git.svg',
+    gitignore: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/git.svg',
+    config: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/settings.svg',
+    sh: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/console.svg',
+    bash: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/console.svg',
+    txt: 'https://cdn.jsdelivr.net/gh/PKief/vscode-material-icon-theme@master/icons/document.svg'
   };
   return icons[ext] || null;
 };
 
-const FileTreeItem = React.memo(({ node, activeFile, activeFileMenu, handleFileOpen, setActiveFileMenu, handleRenameFile, handleDeleteFile, handleDownloadFile, depth = 0 }: any) => {
+const InlineCreationInput = ({ type, depth, value, onChange, onConfirm, onCancel }: any) => {
+  const { File, FolderOpen } = useIcons();
+
+  return (
+    <div 
+      className="w-full flex items-center gap-2 py-1 bg-[#1e1e1e] border-y border-white/[0.03] relative"
+      style={{ paddingLeft: `${Math.max(12, depth * 12 + 16)}px`, paddingRight: '16px' }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc]" />
+      
+      {depth > 0 && Array.from({ length: depth }).map((_, i) => (
+        <div 
+          key={i}
+          className="absolute border-l border-white/5 h-full"
+          style={{ left: `${i * 12 + 12}px` }}
+        />
+      ))}
+      
+      <div className="shrink-0 select-none z-10 ml-0.5">
+        {type === 'folder' ? (
+          <VSCodeFolderOpenIcon className="w-[13px] h-[13px]" />
+        ) : (
+          <VSCodeDefaultFileIcon className="w-[13px] h-[13px]" />
+        )}
+      </div>
+
+      <input
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onConfirm}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            onConfirm();
+          } else if (e.key === 'Escape') {
+            onCancel();
+          }
+        }}
+        placeholder={type === 'folder' ? 'Folder Name...' : 'File Name...'}
+        className="flex-1 bg-[#252526] border border-[#007acc] text-white text-[12px] px-1.5 py-[1px] rounded-[1px] focus:outline-none placeholder-white/25 w-full min-w-0 z-10"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+};
+
+const FileTreeItem = React.memo(({ 
+  node, 
+  activeFile, 
+  activeFileMenu, 
+  handleFileOpen, 
+  setActiveFileMenu, 
+  handleRenameFile, 
+  handleDeleteFile, 
+  handleDownloadFile, 
+  depth = 0,
+  inlineCreatingType,
+  inlineCreatingParent,
+  inlineCreatingName,
+  setInlineCreatingName,
+  onConfirmInlineCreate,
+  onCancelInlineCreate,
+  onInitiateInlineCreateInFolder
+}: any) => {
   const [isOpen, setIsOpen] = useState(true);
 
   const {
@@ -1869,7 +1941,7 @@ const FileTreeItem = React.memo(({ node, activeFile, activeFileMenu, handleFileO
         <div 
           onClick={() => setIsOpen(!isOpen)}
           className={`w-full flex items-center gap-1.5 py-1 text-[13px] transition-all duration-200 group cursor-pointer text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white relative`}
-          style={{ paddingLeft: `${Math.max(12, depth * 12 + 12)}px`, paddingRight: '16px' }}
+          style={{ paddingLeft: `${Math.max(12, depth * 12 + 12)}px`, paddingRight: '12px' }}
         >
           {/* Indent Guide Line for Folders */}
           {depth > 0 && Array.from({ length: depth }).map((_, i) => (
@@ -1883,28 +1955,78 @@ const FileTreeItem = React.memo(({ node, activeFile, activeFileMenu, handleFileO
           <div className="w-3.5 flex items-center justify-center opacity-80 group-hover:opacity-100">
             {isOpen ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
           </div>
-          <div className="text-accent/80 group-hover:text-accent transition-colors">
-            {isOpen ? <FolderOpen size={14} /> : <FolderClosedIcon size={14} />}
+          <div className="transition-transform duration-300 group-hover:scale-110 shrink-0 select-none">
+            {isOpen ? <VSCodeFolderOpenIcon /> : <VSCodeFolderClosedIcon />}
           </div>
           <span className="truncate flex-1 font-medium tracking-tight">{node.name}</span>
+
+          {/* VS Code Hover Actions on Folders */}
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 z-20 shrink-0 ml-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(true);
+                onInitiateInlineCreateInFolder('file', node.path);
+              }}
+              className="p-0.5 hover:bg-white/10 rounded text-foreground-subtle hover:text-white transition-colors"
+              title="New File under folder..."
+            >
+              <FilePlus size={12} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(true);
+                onInitiateInlineCreateInFolder('folder', node.path);
+              }}
+              className="p-0.5 hover:bg-white/10 rounded text-foreground-subtle hover:text-white transition-colors"
+              title="New Folder under folder..."
+            >
+              <FolderPlus size={12} />
+            </button>
+          </div>
         </div>
-        {isOpen && Object.values(node.children).sort((a: any, b: any) => {
-           if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-           return a.name.localeCompare(b.name);
-        }).map((child: any) => (
-          <FileTreeItem 
-            key={child.path}
-            node={child}
-            activeFile={activeFile}
-            activeFileMenu={activeFileMenu}
-            handleFileOpen={handleFileOpen}
-            setActiveFileMenu={setActiveFileMenu}
-            handleRenameFile={handleRenameFile}
-            handleDeleteFile={handleDeleteFile}
-            handleDownloadFile={handleDownloadFile}
-            depth={depth + 1}
-          />
-        ))}
+
+        {isOpen && (
+          <>
+            {/* Inline creation form inside this folder if active */}
+            {inlineCreatingType && inlineCreatingParent === node.path && (
+              <InlineCreationInput 
+                type={inlineCreatingType}
+                depth={depth + 1}
+                value={inlineCreatingName}
+                onChange={setInlineCreatingName}
+                onConfirm={onConfirmInlineCreate}
+                onCancel={onCancelInlineCreate}
+              />
+            )}
+
+            {Object.values(node.children).sort((a: any, b: any) => {
+               if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+               return a.name.localeCompare(b.name);
+            }).map((child: any) => (
+              <FileTreeItem 
+                key={child.path}
+                node={child}
+                activeFile={activeFile}
+                activeFileMenu={activeFileMenu}
+                handleFileOpen={handleFileOpen}
+                setActiveFileMenu={setActiveFileMenu}
+                handleRenameFile={handleRenameFile}
+                handleDeleteFile={handleDeleteFile}
+                handleDownloadFile={handleDownloadFile}
+                depth={depth + 1}
+                inlineCreatingType={inlineCreatingType}
+                inlineCreatingParent={inlineCreatingParent}
+                inlineCreatingName={inlineCreatingName}
+                setInlineCreatingName={setInlineCreatingName}
+                onConfirmInlineCreate={onConfirmInlineCreate}
+                onCancelInlineCreate={onCancelInlineCreate}
+                onInitiateInlineCreateInFolder={onInitiateInlineCreateInFolder}
+              />
+            ))}
+          </>
+        )}
       </div>
     );
   }
@@ -1955,7 +2077,7 @@ const FileTreeItem = React.memo(({ node, activeFile, activeFileMenu, handleFileO
           }}
         />
       ) : (
-        <Icon size={14} className={`${iconColor} transition-transform duration-300 group-hover:scale-110`} />
+        <VSCodeDefaultFileIcon className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
       )}
       
       <span className={`truncate flex-1 tracking-tight ${isSelected ? 'font-medium' : 'font-normal'}`}>{node.name}</span>
@@ -2147,7 +2269,197 @@ export default function App() {
   const [previewPendingIdx, setPreviewPendingIdx] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const stopRef = useRef(false);
-  const [activeTab, setActiveTab] = useState<'projects' | 'settings' | 'search'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'settings' | 'search' | 'chat' | 'extensions'>('chat');
+
+  // Custom Extension states
+  const [customExtensions, setCustomExtensions] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('reversx_custom_extensions');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: 'case-transformer',
+        name: 'Case Transformer',
+        description: 'Selected code text converts to UPPERCASE, lowercase, camelCase, snake_case etc.',
+        html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #181c1c;
+      color: #94a3b8;
+      padding: 12px;
+      margin: 0;
+      font-size: 12px;
+    }
+    h3 {
+      color: #f1f5f9;
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      margin-bottom: 6px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #60a5fa;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 10px;
+      color: #64748b;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h3>🔥 Case Transformer</h3>
+  <button onclick="transform('upper')">UPPERCASE</button>
+  <button onclick="transform('lower')">lowercase</button>
+  <button onclick="transform('camel')">camelCase</button>
+  <button onclick="transform('snake')">snake_case</button>
+  
+  <div class="status" id="status">Ready</div>
+
+  <script>
+    function transform(mode) {
+      try {
+        const api = window.parent.EditorAPI || window.EditorAPI;
+        if (!api) {
+          document.getElementById('status').innerText = "EditorAPI not found";
+          return;
+        }
+        const activeState = api.editor.active;
+        const selection = activeState.getSelection();
+        if (!selection || !selection.text) {
+          document.getElementById('status').innerText = "Please select code first!";
+          return;
+        }
+        let txt = selection.text;
+        if (mode === 'upper') txt = txt.toUpperCase();
+        else if (mode === 'lower') txt = txt.toLowerCase();
+        else if (mode === 'camel') txt = txt.replace(/[-_]([a-z])/g, (g) => g[1].toUpperCase());
+        else if (mode === 'snake') txt = txt.replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+        
+        activeState.insertText(txt);
+        document.getElementById('status').innerText = "Transformed text successful.";
+      } catch (e) {
+        document.getElementById('status').innerText = "Error: " + e.message;
+      }
+    }
+  </script>
+</body>
+</html>`,
+        isActive: true
+      },
+      {
+        id: 'code-decorator',
+        name: 'Code Decorator',
+        description: 'Quickly insert descriptive file headers, JS DocBlocks, and star-banners.',
+        html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #181c18;
+      color: #a3b894;
+      padding: 12px;
+      margin: 0;
+      font-size: 12px;
+    }
+    h3 {
+      color: #f5f9f1;
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    button {
+      background: #10b981;
+      color: white;
+      border: none;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      margin-bottom: 6px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #34d399;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 10px;
+      color: #64748b;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h3>🛠️ Code JSDoc & Banner</h3>
+  <button onclick="addComment('jsdoc')">Add JSDoc Block</button>
+  <button onclick="addComment('banner')">Add Comment Banner</button>
+  
+  <div class="status" id="status">Ready</div>
+
+  <script>
+    function addComment(mode) {
+      try {
+        const api = window.parent.EditorAPI || window.EditorAPI;
+        if (!api) {
+          document.getElementById('status').innerText = "EditorAPI not found";
+          return;
+        }
+        const activeState = api.editor.active;
+        const file = activeState.getPath() || 'unknown';
+        const date = new Date().toLocaleDateString();
+        
+        let comment = "";
+        if (mode === 'jsdoc') {
+          comment = "/**\\n * @file " + file + "\\n * @date " + date + "\\n * @author Extension\\n */\\n";
+        } else {
+          comment = "/* ==========================================================\\n   BUILD UNIT SHIELD: " + date + " \\n   ========================================================== */\\n";
+        }
+        activeState.insertText(comment);
+        document.getElementById('status').innerText = "Comment inserted.";
+      } catch (e) {
+        document.getElementById('status').innerText = "Error: " + e.message;
+      }
+    }
+  </script>
+</body>
+</html>`,
+        isActive: true
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('reversx_custom_extensions', JSON.stringify(customExtensions));
+  }, [customExtensions]);
+
+  const [activeExtensionUI, setActiveExtensionUI] = useState<any | null>(null);
+  const [showAddExtensionForm, setShowAddExtensionForm] = useState(false);
+  const [newExtName, setNewExtName] = useState('');
+  const [newExtDesc, setNewExtDesc] = useState('');
+  const [newExtHtml, setNewExtHtml] = useState('');
   const [docLanguage, setDocLanguage] = useState<'en' | 'bn'>('en');
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [globalReplaceQuery, setGlobalReplaceQuery] = useState('');
@@ -2174,6 +2486,75 @@ export default function App() {
   const [githubCommitMessage, setGithubCommitMessage] = useState('Update from ReversX Editor');
   const [isGitHubImporting, setIsGitHubImporting] = useState(false);
   const [isGitHubExporting, setIsGitHubExporting] = useState(false);
+  const [welcomeChatInput, setWelcomeChatInput] = useState('');
+  const [welcomeChatFiles, setWelcomeChatFiles] = useState<{name: string, type: string, url?: string}[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const welcomeChatRef = useRef<HTMLTextAreaElement>(null);
+  const welcomeChatFileInputRef = useRef<HTMLInputElement>(null);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState('Agent v1');
+  const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = useCallback(async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+    }
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  }, [deferredPrompt]);
+
+  const toggleVoiceInput = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setWelcomeChatInput(prev => prev + (prev ? ' ' : '') + transcript);
+      if (welcomeChatRef.current) {
+        setTimeout(() => {
+          if (welcomeChatRef.current) {
+            welcomeChatRef.current.style.height = 'auto';
+            welcomeChatRef.current.style.height = `${Math.min(welcomeChatRef.current.scrollHeight, 150)}px`;
+          }
+        }, 0);
+      }
+    };
+    
+    recognition.start();
+  }, [welcomeChatInput]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -2240,6 +2621,8 @@ export default function App() {
   const holdTimer = useRef<NodeJS.Timeout | null>(null);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const explorerFileInputRef = useRef<HTMLInputElement>(null);
   const [editorFontSize, setEditorFontSize] = useState(13);
   const [editorFontFamily, setEditorFontFamily] = useState('"JetBrains Mono", monospace');
   const editorThemeName = 'VS Code Dark';
@@ -2332,11 +2715,15 @@ export default function App() {
   const [editorSplitRatio, setEditorSplitRatio] = useState(50);
   const [isResizingEditorSplit, setIsResizingEditorSplit] = useState(false);
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+  const [inlineCreatingType, setInlineCreatingType] = useState<'file' | 'folder' | null>(null);
+  const [inlineCreatingParent, setInlineCreatingParent] = useState<string>('');
+  const [inlineCreatingName, setInlineCreatingName] = useState('');
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [isExplorerCreateMenuOpen, setIsExplorerCreateMenuOpen] = useState(false);
+  const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameOldName, setRenameOldName] = useState('');
   const [renameNewName, setRenameNewName] = useState('');
@@ -2575,6 +2962,267 @@ export default function App() {
       }
     }
   }, [files, activeFile]);
+
+  // ==========================================
+  // EXTENSION API SYNCHRONIZATION HOOKS & LOOPS
+  // ==========================================
+  useEffect(() => {
+    // 1. Export state and references to the browser-side Extension API Manager
+    syncReactState(activeEditorRef.current, {
+      files,
+      setFiles,
+      activeFile,
+      setActiveFile,
+      openFiles,
+      setOpenFiles,
+      showNotification: (msg, type) => {
+        console.log(`[Extension Notification: ${type}] ${msg}`);
+      }
+    });
+
+    // Notify listeners of selection updates if possible
+    if (activeEditorRef.current) {
+      try {
+        const selection = activeEditorRef.current.state?.selection?.main;
+        if (selection) {
+          triggerEvent('selection:changed', {
+            anchor: selection.anchor,
+            head: selection.head,
+            text: activeEditorRef.current.state.doc.sliceString(selection.from, selection.to)
+          });
+        }
+      } catch (e) {}
+    }
+  }, [files, activeFile, openFiles, setFiles, setActiveFile, setOpenFiles]);
+
+  // Synchronize with the Backend Express Server
+  useEffect(() => {
+    let activeSelection = null;
+    if (activeEditorRef.current) {
+      try {
+        const sel = activeEditorRef.current.state?.selection?.main;
+        if (sel) {
+          activeSelection = {
+            anchor: sel.anchor,
+            head: sel.head,
+            from: sel.from,
+            to: sel.to
+          };
+        }
+      } catch (e) {}
+    }
+
+    // Post to `/api/editor/sync`
+    fetch('/api/editor/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        files,
+        activeFile,
+        selection: activeSelection
+      })
+    }).catch(err => {
+      // Backend api didn't respond or offline inside frame preview, ignore
+    });
+  }, [files, activeFile]);
+
+  // Poll for external commands/actions issued by Node.js, TS, JS scripts
+  useEffect(() => {
+    let isMounted = true;
+    let pollInterval: any;
+
+    const pollPendingActions = async () => {
+      try {
+        const response = await fetch('/api/editor/actions/pending');
+        if (!response.ok) return;
+        const actions = await response.json();
+        if (!isMounted || !actions || actions.length === 0) return;
+
+        // Process sequentially
+        for (const action of actions) {
+          try {
+            let result: any = null;
+            let errorMsg: string | null = null;
+
+            if (action.type === 'writeFile') {
+              if (action.path && action.code !== undefined) {
+                setFiles(prev => ({
+                  ...prev,
+                  [action.path!]: { code: action.code!, language: action.language || 'javascript' }
+                }));
+                result = { success: true };
+              } else {
+                errorMsg = "Missing path or code in writeFile";
+              }
+            } else if (action.type === 'bulkWrite' || action.type === 'writeFiles') {
+              if (action.files) {
+                setFiles(prev => {
+                  const copy = { ...prev };
+                  Object.entries(action.files).forEach(([p, val]: [string, any]) => {
+                    const finalLanguage = val.language || prev[p]?.language || 'javascript';
+                    copy[p] = { code: val.code, language: finalLanguage };
+                    triggerEvent('file:changed', { path: p, code: val.code, language: finalLanguage });
+                  });
+                  return copy;
+                });
+                result = { success: true };
+              } else {
+                errorMsg = "Missing files in bulkWrite";
+              }
+            } else if (action.type === 'deleteFile') {
+              if (action.path) {
+                setFiles(prev => {
+                  const copy = { ...prev };
+                  delete copy[action.path!];
+                  return copy;
+                });
+                result = { success: true };
+              } else {
+                errorMsg = "Missing path in deleteFile";
+              }
+            } else if (action.type === 'bulkDelete' || action.type === 'deleteFiles') {
+              if (action.paths && Array.isArray(action.paths)) {
+                setFiles(prev => {
+                  const copy = { ...prev };
+                  action.paths.forEach((p: string) => {
+                    if (copy[p]) {
+                      delete copy[p];
+                      triggerEvent('file:deleted', { path: p });
+                    }
+                  });
+                  return copy;
+                });
+                result = { success: true };
+              } else {
+                errorMsg = "Missing paths array in bulkDelete";
+              }
+            } else if (action.type === 'batch') {
+              if (action.operations && Array.isArray(action.operations)) {
+                setFiles(prev => {
+                  const copy = { ...prev };
+                  action.operations.forEach((op: any) => {
+                    if (op.type === 'write' && op.path && op.code !== undefined) {
+                      const finalLanguage = op.language || prev[op.path]?.language || 'javascript';
+                      copy[op.path] = { code: op.code, language: finalLanguage };
+                      triggerEvent('file:changed', { path: op.path, code: op.code, language: finalLanguage });
+                    } else if (op.type === 'delete' && op.path) {
+                      if (copy[op.path]) {
+                        delete copy[op.path];
+                        triggerEvent('file:deleted', { path: op.path });
+                      }
+                    }
+                  });
+                  return copy;
+                });
+                result = { success: true };
+              } else {
+                errorMsg = "Missing operations array in batch";
+              }
+            } else if (action.type === 'readRange') {
+              if (action.path) {
+                const f = files[action.path];
+                if (f) {
+                  const code = f.code;
+                  const opts = action.options || {};
+                  if (opts.offset !== undefined) {
+                    const offset = opts.offset;
+                    const length = opts.length !== undefined ? opts.length : code.length - offset;
+                    result = { text: code.substring(offset, offset + length) };
+                  } else if (opts.startLine !== undefined) {
+                    const lines = code.split('\n');
+                    const start = Math.max(0, opts.startLine - 1);
+                    const end = opts.endLine !== undefined ? Math.min(lines.length, opts.endLine) : start + 1;
+                    result = { text: lines.slice(start, end).join('\n') };
+                  } else {
+                    result = { text: code };
+                  }
+                } else {
+                  errorMsg = `File "${action.path}" not found`;
+                }
+              } else {
+                errorMsg = "Missing path in readRange";
+              }
+            } else if (action.type === 'openFile') {
+              if (action.path) {
+                if (files[action.path]) {
+                  setActiveFile(action.path);
+                  if (!openFiles.includes(action.path)) {
+                    setOpenFiles(prev => prev.includes(action.path!) ? prev : [...prev, action.path!]);
+                  }
+                  result = { success: true };
+                } else {
+                  errorMsg = `File "${action.path}" does not exist`;
+                }
+              } else {
+                errorMsg = "Missing path in openFile";
+              }
+            } else if (action.type === 'setSelection') {
+              if (activeEditorRef.current && action.anchor !== undefined) {
+                activeEditorRef.current.dispatch({
+                  selection: { anchor: action.anchor, head: action.head !== undefined ? action.head : action.anchor },
+                  scrollIntoView: true
+                });
+                result = { success: true };
+              } else {
+                errorMsg = "Missing anchor or editor not ready";
+              }
+            } else if (action.type === 'insertText') {
+              if (activeEditorRef.current && action.text !== undefined) {
+                const view = activeEditorRef.current;
+                const selection = view.state.selection.main;
+                view.dispatch({
+                  changes: { from: selection.from, to: selection.to, insert: action.text },
+                  selection: { anchor: selection.from + action.text.length }
+                });
+                result = { success: true };
+              } else {
+                errorMsg = "Missing text or editor not ready";
+              }
+            } else if (action.type === 'executeCommand') {
+              if (action.id_cmd) {
+                result = await EditorAPI.commands.execute(action.id_cmd, ...(action.args || []));
+              } else {
+                errorMsg = "Missing id_cmd in executeCommand";
+              }
+            } else {
+              errorMsg = `Unknown action type "${action.type}"`;
+            }
+
+            // Report resolution back to Express to resume Node.js blocked HTTP client
+            await fetch('/api/editor/actions/resolve', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                actionId: action.id,
+                result,
+                error: errorMsg
+              })
+            });
+
+          } catch (itemErr: any) {
+            console.error(`Error executing action ${action.id}:`, itemErr);
+            fetch('/api/editor/actions/resolve', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                actionId: action.id,
+                error: itemErr.message || "Failed to execute"
+              })
+            }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        // Silence potential network connection errors during standalone preview loads
+      }
+    };
+
+    pollInterval = setInterval(pollPendingActions, 450);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
+  }, [files, activeFile, openFiles, setFiles, setActiveFile, setOpenFiles]);
 
   
   const currentAppTheme = React.useMemo(() => APP_THEMES[appThemeName] || APP_THEMES['VS Code Dark'], [appThemeName]);
@@ -2937,11 +3585,7 @@ export default function App() {
   const handleFileOpen = useCallback((name: string) => {
     setOpenFiles(prev => {
       if (prev.includes(name)) return prev;
-      const newTabs = [...prev, name];
-      if (newTabs.length > 10) { // Increased tab limit slightly if needed
-        return newTabs.slice(-10);
-      }
-      return newTabs;
+      return [...prev, name];
     });
     setPaneFile(focusedPaneIndex, name);
   }, [focusedPaneIndex, setPaneFile]);
@@ -3038,9 +3682,9 @@ export default function App() {
         setFiles(projectFiles);
         setPreviewFiles(projectFiles);
         if (lastOpenFiles && lastOpenFiles.length > 0 && Object.keys(projectFiles).length > 0) {
-          setOpenFiles(lastOpenFiles.filter((f: string) => projectFiles[f]).slice(0, 4));
+          setOpenFiles(lastOpenFiles.filter((f: string) => projectFiles[f]));
         } else {
-          setOpenFiles(Object.keys(projectFiles).slice(0, 4));
+          setOpenFiles(Object.keys(projectFiles));
         }
         
         if (lastActiveFile && projectFiles[lastActiveFile]) {
@@ -3104,7 +3748,7 @@ export default function App() {
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const newWidth = clientX - 56;
       const minWidth = 200;
-      const maxWidth = window.innerWidth * 0.8;
+      const maxWidth = windowWidth * 0.8;
       
       if (newWidth > minWidth && newWidth < maxWidth) {
         setSidebarWidth(newWidth);
@@ -4113,7 +4757,6 @@ export default function App() {
   
   
   const handleImportFiles = useCallback(async (fileList: FileList | File[]) => {
-    if (fileList.length === 0) return;
     setIsLoading(true);
     
     try {
@@ -4164,6 +4807,13 @@ export default function App() {
 
       // If parallel reads finished, let's grab the first file again deterministically if possible
       const keys = Object.keys(newFiles);
+      if (keys.length === 0) {
+        const defaultName = 'untitled.txt';
+        newFiles[defaultName] = { code: '', language: 'txt' };
+        keys.push(defaultName);
+        if (!firstFile) firstFile = defaultName;
+      }
+
       if (keys.length > 0) {
           if (!firstFile || !newFiles[firstFile]) {
              firstFile = keys.find(k => k.includes('index.html')) || keys.find(k => k.includes('main.')) || keys[0];
@@ -4192,7 +4842,7 @@ export default function App() {
           
           setOpenFiles(prev => {
               const toAdd = keys.filter(f => !prev.includes(f));
-              return Array.from(new Set([...prev, ...toAdd])).slice(0, 50); // limit open tabs
+              return Array.from(new Set([...prev, ...toAdd])); // removed limit
           });
           
           if (firstFile) {
@@ -4206,6 +4856,132 @@ export default function App() {
       setIsLoading(false);
     }
   }, [setFiles, setPreviewFiles, setOpenFiles, setEditorPanes, setActiveFile, activeProjectId]);
+
+  const handleZipUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const zipFile = e.target.files?.[0];
+    if (!zipFile) return;
+    setIsLoading(true);
+    setIsUploadMenuOpen(false);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const content = await zip.loadAsync(zipFile);
+      const newFiles: Record<string, { code: string, language: string }> = {};
+      
+      const filePaths = Object.keys(content.files);
+      for (const path of filePaths) {
+        const fileNode = content.files[path];
+        if (fileNode.dir) continue;
+        
+        // Skip common ignore patterns
+        if (path.includes('node_modules/') || path.includes('.git/') || path.includes('__MACOSX/')) continue;
+        
+        const isImage = /\.(png|jpg|jpeg|gif|svg|webp|ico)$/i.test(path);
+        if (isImage) {
+          const base64 = await fileNode.async('base64');
+          const ext = path.split('.').pop()?.toLowerCase();
+          const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext}`;
+          newFiles[path] = { code: `data:${mimeType};base64,${base64}`, language: 'image' };
+        } else {
+          const text = await fileNode.async('text');
+          newFiles[path] = { code: text, language: getLanguageFromPath(path) };
+        }
+      }
+
+      if (Object.keys(newFiles).length === 0) {
+        newFiles['untitled.txt'] = { code: '', language: 'txt' };
+      }
+
+      setFiles(prev => {
+        const nextFiles = { ...prev, ...newFiles };
+        if (!activeProjectId) {
+           const newProject: Project = {
+             id: generateId(),
+             name: zipFile.name.replace(/\.zip$/i, '') || `Imported Zip`,
+             messages: [],
+             files: nextFiles,
+             activeFile: Object.keys(newFiles)[0] || 'index.html',
+             openFiles: [Object.keys(newFiles)[0] || 'index.html'],
+             createdAt: Date.now()
+           };
+           requestAnimationFrame(() => {
+              setProjects(p => [newProject, ...p]);
+              setActiveProjectId(newProject.id);
+           });
+        }
+        return nextFiles;
+      });
+      setPreviewFiles(prev => ({ ...prev, ...newFiles }));
+      const firstZipFile = Object.keys(newFiles)[0];
+      if (firstZipFile) {
+         handleFileOpen(firstZipFile);
+      }
+    } catch (err) {
+      console.error('Error uploading zip:', err);
+    } finally {
+      setIsLoading(false);
+      if (e.target) e.target.value = '';
+    }
+  }, [activeFile, handleFileOpen, setFiles, setPreviewFiles]);
+
+  const handleSingleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+    setIsUploadMenuOpen(false);
+    
+    const newFiles: Record<string, { code: string, language: string }> = {};
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      try {
+        const isImage = file.type.startsWith('image/') || /\.(png|jpg|jpeg|gif|svg|webp|ico)$/i.test(file.name);
+        if (isImage) {
+          const reader = new FileReader();
+          const p = new Promise<string>((resolve, reject) => {
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const base64 = await p;
+          newFiles[file.name] = { code: base64, language: 'image' };
+        } else {
+          const text = await file.text();
+          newFiles[file.name] = { code: text, language: getLanguageFromPath(file.name) };
+        }
+      } catch (err) {
+        console.error("Failed to read file", file.name, err);
+      }
+    }
+    
+    if (Object.keys(newFiles).length === 0) {
+      newFiles['untitled.txt'] = { code: '', language: 'txt' };
+    }
+    
+    setFiles(prev => {
+      const nextFiles = { ...prev, ...newFiles };
+      if (!activeProjectId) {
+         const newProject: Project = {
+           id: generateId(),
+           name: `Imported Files`,
+           messages: [],
+           files: nextFiles,
+           activeFile: Object.keys(newFiles)[0] || 'index.html',
+           openFiles: [Object.keys(newFiles)[0] || 'index.html'],
+           createdAt: Date.now()
+         };
+         requestAnimationFrame(() => {
+            setProjects(p => [newProject, ...p]);
+            setActiveProjectId(newProject.id);
+         });
+      }
+      return nextFiles;
+    });
+    setPreviewFiles(prev => ({ ...prev, ...newFiles }));
+    const firstUploadedFile = Object.keys(newFiles)[0];
+    if (firstUploadedFile) {
+      handleFileOpen(firstUploadedFile);
+    }
+    if (e.target) e.target.value = '';
+  }, [activeFile, handleFileOpen, setFiles, setPreviewFiles]);
 
   const handleCreateFilesDirectly = useCallback((newFiles: string[]) => {
     setFiles(prev => {
@@ -4231,16 +5007,86 @@ export default function App() {
     });
   }, [setOpenFiles, setActiveFile]);
 
-  const handleCreateFile = useCallback(() => {
-    setNewFileName('');
-    setShowNewFileModal(true);
+  const handleCreateInFolder = useCallback((type: 'file' | 'folder', parentPath: string) => {
+    setInlineCreatingType(type);
+    setInlineCreatingParent(parentPath);
+    setInlineCreatingName('');
     setIsExplorerCreateMenuOpen(false);
   }, []);
 
+  const handleCreateFile = useCallback(() => {
+    let parentFolder = '';
+    if (activeFile) {
+      const parts = activeFile.split('/');
+      if (parts.length > 1) {
+        parentFolder = parts.slice(0, parts.length - 1).join('/');
+      }
+    }
+    handleCreateInFolder('file', parentFolder);
+  }, [activeFile, handleCreateInFolder]);
+
   const handleCreateFolder = useCallback(() => {
-    setNewFolderName('');
-    setShowNewFolderModal(true);
-    setIsExplorerCreateMenuOpen(false);
+    let parentFolder = '';
+    if (activeFile) {
+      const parts = activeFile.split('/');
+      if (parts.length > 1) {
+        parentFolder = parts.slice(0, parts.length - 1).join('/');
+      }
+    }
+    handleCreateInFolder('folder', parentFolder);
+  }, [activeFile, handleCreateInFolder]);
+
+  const handleConfirmInlineCreate = useCallback(() => {
+    const name = inlineCreatingName.trim();
+    if (!name) {
+      setInlineCreatingType(null);
+      setInlineCreatingParent('');
+      setInlineCreatingName('');
+      return;
+    }
+
+    const fullPath = inlineCreatingParent ? `${inlineCreatingParent}/${name}` : name;
+
+    if (inlineCreatingType === 'file') {
+      if (files[fullPath]) {
+        alert('File already exists!');
+        return;
+      }
+      
+      const language = getLanguageFromPath(fullPath);
+
+      setFiles(prev => ({
+        ...prev,
+        [fullPath]: { code: '', language }
+      }));
+      setOpenFiles(prev => {
+        return prev.includes(fullPath) ? prev : [...prev, fullPath];
+      });
+      setActiveFile(fullPath);
+    } else {
+      const folderPath = fullPath.endsWith('/') ? fullPath.substring(0, fullPath.length - 1) : fullPath;
+      const dummyFile = `${folderPath}/.keep`;
+      
+      if (files[dummyFile]) {
+        alert('Folder already exists!');
+        return;
+      }
+
+      setFiles(prev => ({
+        ...prev,
+        [dummyFile]: { code: '', language: 'plaintext' }
+      }));
+    }
+
+    setInlineCreatingType(null);
+    setInlineCreatingParent('');
+    setInlineCreatingName('');
+  }, [inlineCreatingName, inlineCreatingType, inlineCreatingParent, files, setOpenFiles, setActiveFile]);
+
+  const handleCancelInlineCreate = useCallback(() => {
+    setInlineCreatingType(null);
+    setInlineCreatingParent('');
+    setInlineCreatingName('');
   }, []);
 
   const handleGithubImport = useCallback(() => {
@@ -4424,14 +5270,17 @@ export default function App() {
       };
 
       const importedFiles = await fetchRepo();
-      if (Object.keys(importedFiles).length > 0) {
-        setFiles(prev => ({ ...prev, ...importedFiles }));
-        setPreviewFiles(importedFiles);
-        const firstFile = Object.keys(importedFiles)[0];
-        setActiveFile(firstFile);
-        setOpenFiles(prev => Array.from(new Set([...prev, firstFile])));
-        setEditorPanes([firstFile]);
+      if (Object.keys(importedFiles).length === 0) {
+        importedFiles['untitled.txt'] = { code: '', language: 'txt' };
       }
+
+      setFiles(prev => ({ ...prev, ...importedFiles }));
+      setPreviewFiles(importedFiles);
+      const firstFile = Object.keys(importedFiles)[0];
+      setActiveFile(firstFile);
+      setOpenFiles(prev => Array.from(new Set([...prev, firstFile])));
+      setEditorPanes([firstFile]);
+      
       setIsGithubImportOpen(false);
       setGithubRepoUrl('');
     } catch (err: any) {
@@ -4477,9 +5326,7 @@ export default function App() {
       [name]: { code: '', language }
     }));
     setOpenFiles(prev => {
-      const newTabs = prev.includes(name) ? prev : [...prev, name];
-      if (newTabs.length > 4) return newTabs.slice(-4);
-      return newTabs;
+      return prev.includes(name) ? prev : [...prev, name];
     });
     setActiveFile(name);
     setShowNewFileModal(false);
@@ -4958,7 +5805,7 @@ export default function App() {
 
   return (
     <IconContext.Provider value={iconThemeName}>
-      <div style={{ fontFamily: FONT_OPTIONS[appFontName] }} className={`flex flex-col md:flex-row h-full w-full bg-background text-foreground overflow-hidden relative`}>
+      <div style={{ fontFamily: FONT_OPTIONS[appFontName] }} className={`flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative`}>
       
       <AnimatePresence mode="wait">
         {showAgentQuestions && (
@@ -5134,185 +5981,204 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Activity Bar (Desktop only) */}
-      <div className="hidden md:flex w-12 flex-col items-center py-2 border-r border-[#1e1e1e] bg-[#333333] shrink-0">
-        <div className="flex flex-col w-full">
-          <button 
-            onClick={() => {
-              if (activeTab === 'projects') {
-                setIsExplorerOpen(!isExplorerOpen);
-              } else {
-                setActiveTab('projects');
-                setIsExplorerOpen(true);
-              }
-            }}
-            className={`w-full h-12 flex items-center justify-center transition-all relative ${activeTab === 'projects' && isExplorerOpen ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
-            title="Explorer"
-          >
-            {activeTab === 'projects' && isExplorerOpen && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white shadow-[0_0_8px_white]" />}
-            <Files size={24} strokeWidth={1.5} />
-          </button>
-
-        </div>
-        <div className="mt-auto flex flex-col w-full pb-2">
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`w-full h-12 flex items-center justify-center transition-all relative ${activeTab === 'settings' ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
-            title="Settings"
-          >
-            {activeTab === 'settings' && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white shadow-[0_0_8px_white]" />}
-            <Settings size={24} strokeWidth={1.5} />
-          </button>
-
-        </div>
-      </div>
-
-
       {/* Sidebar Content */}
       <div 
-        style={{ width: isSidebarMinimized ? '0px' : (window.innerWidth >= 768 ? `${sidebarWidth}px` : '100%') }}
+        style={{ width: isSidebarMinimized ? '0px' : (mobileView === 'chat' ? '100%' : '0px'), height: mobileView === 'chat' ? '100%' : '0px' }}
         className={`
           ${mobileView === 'chat' ? 'flex flex-1' : 'hidden'} 
-          md:flex border-r border-[#1e1e1e] bg-[#252526] flex-col overflow-hidden transition-[width] ${isResizing ? 'duration-0' : 'duration-300'} ease-in-out relative
+          border-r border-[#1e1e1e] bg-[#1a1a1a] flex-col overflow-hidden transition-all duration-300 ease-in-out relative
         `}
       >
-        <div className="h-9 px-4 flex items-center justify-between shrink-0 select-none">
-          <span className="text-[11px] font-medium text-foreground-subtle tracking-tight capitalize">{activeTab}</span>
-          <div className="flex items-center gap-1">
-            {false && (
-              <>
-                <button 
-                  onClick={() => setIsSidebarMinimized(true)}
-                  className="hidden md:flex w-5 h-5 items-center justify-center text-foreground-subtle hover:text-white hover:bg-white/5 rounded-[2px] transition-all"
-                  title="Minimize"
+        <div className="h-10 px-2 flex items-center justify-between shrink-0 select-none bg-black/10 border-b border-white/5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {[
+              { id: 'chat', label: 'Chat', icon: MessageSquare },
+              { id: 'projects', label: 'Apps', icon: Folder },
+              { id: 'extensions', label: 'Extensions', icon: Blocks },
+              { id: 'settings', label: 'Settings', icon: Settings },
+            ].map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id as any);
+                    if (tab.id !== 'extensions') {
+                      setActiveExtensionUI(null);
+                    }
+                  }}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-medium transition-all ${
+                    isActive 
+                      ? 'bg-accent/15 text-accent border border-accent/20' 
+                      : 'text-foreground/50 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                  title={tab.label}
                 >
-                  <ChevronLeft size={14} />
+                  <Icon size={12} />
+                  <span>{tab.label}</span>
                 </button>
-                <button 
-                  onClick={createNewProject}
-                  className="w-5 h-5 flex items-center justify-center text-foreground-subtle hover:text-white hover:bg-white/5 rounded-[2px] transition-all"
-                  title="New Project"
-                >
-                  <Plus size={14} />
-                </button>
-              </>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {activeTab === 'extensions' && (
+              <button
+                onClick={() => setShowAddExtensionForm(prev => !prev)}
+                className="w-5 h-5 flex items-center justify-center text-accent bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded transition-all cursor-pointer"
+                title="Create/Upload Extension"
+              >
+                <Plus size={12} />
+              </button>
             )}
           </div>
         </div>
 
 
-        {false ? (
-          <div className="flex-1 flex flex-col overflow-hidden bg-white/[0.01]">
-            <ChatList 
-              messages={messages}
-              isLoading={isLoading}
-              chatContainerRef={chatContainerRef}
-              handleScroll={handleScroll}
-              chatEndRef={chatEndRef}
-              theme={currentEditorTheme}
-              themeName={editorThemeName}
-              userName={userName}
-              onEditAttachment={onEditAttachment}
-              getPlatformConfig={getPlatformConfig}
-            />
+        {activeTab === 'chat' ? (
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#1a1a1a]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+              {messages.length === 0 && (
+                <div className="px-4 pt-12 pb-4 flex flex-col items-center">
+                  <div className="flex flex-col items-center gap-3 mb-8 select-none w-full">
+                    <div className="w-16 h-16 rounded-[20%] bg-gradient-to-br from-[#007acc] to-[#005a9e] shadow-[0_0_30px_rgba(0,122,204,0.3)] flex items-center justify-center border border-white/10 shrink-0">
+                      <svg viewBox="0 0 200 200" width="36" height="36">
+                        <path
+                          d="M 100,10 L 18,188 L 62,158 L 100,132 L 138,158 L 182,188 Z"
+                          fill="none"
+                          stroke="#ffffff"
+                          strokeWidth="8"
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <h1 className="text-2xl font-extrabold text-[#cccccc] tracking-tight mb-2" style={{ fontFamily: 'Georgia, serif', textDecorationLine: 'underline' }}>ReversX</h1>
+                      <div className="px-2 py-0.5 bg-[#252525] border border-[#333] rounded shadow-sm flex items-center gap-1">
+                        <p className="text-white text-[9px] font-medium tracking-wider uppercase italic">Code at the speed of thought.</p>
+                        <Zap size={8} className="text-[#007acc] fill-[#007acc]/20" />
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="px-6 pt-4 pb-2 border-t border-white/5 bg-sidebar">
-              <div className="relative group max-w-4xl mx-auto">
-                {pendingAttachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {pendingAttachments.map((att, idx) => (
-                      <div key={idx} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded text-[10px] text-blue-400">
-                          <div 
-                            className="flex items-center gap-2 cursor-pointer hover:text-blue-300"
-                            onClick={() => setEditingAttachment({ attachment: att, index: idx, isPending: true })}
+                  <div className="w-full flex flex-col gap-2 mb-8">
+                    <button 
+                      onClick={() => folderInputRef.current?.click()}
+                      className="w-full px-4 py-2.5 bg-[#007acc] hover:bg-[#005a9e] shadow-lg text-white/90 hover:text-white rounded flex items-center gap-3 transition-all group border border-white/10"
+                    >
+                      <FolderOpen size={16} className="group-hover:scale-110 transition-transform" />
+                      <div className="flex flex-col items-start gap-0 text-left min-w-0">
+                        <span className="font-semibold text-[11px] truncate w-full">Import from Computer</span>
+                        <span className="text-[9px] text-white/70 truncate w-full">Upload a folder to start</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => handleGithubImport()}
+                      className="w-full px-4 py-2.5 bg-[#2d2d2d] hover:bg-[#3d3d3d] shadow-lg text-[#cccccc] hover:text-white rounded flex items-center gap-3 transition-all group border border-[#444]"
+                    >
+                      <Github size={16} className="group-hover:scale-110 transition-transform" />
+                      <div className="flex flex-col items-start gap-0 text-left min-w-0">
+                        <span className="font-semibold text-[11px] truncate w-full">Import from GitHub</span>
+                        <span className="text-[9px] text-[#858585] truncate w-full">Import a repository</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <ChatList 
+                messages={messages}
+                chatContainerRef={chatContainerRef}
+                handleScroll={handleScroll}
+                chatEndRef={chatEndRef}
+                isLoading={isLoading}
+                theme={APP_THEMES[appThemeName]}
+                themeName={appThemeName}
+                userName={userName}
+                onEditAttachment={() => {}}
+                getPlatformConfig={() => ({ platform: 'gemini', apiKey: geminiApiKey, model: geminiModel, extra: {} })}
+              />
+            </div>
+
+            {/* Sticky Chat Box at Bottom */}
+            <div className="p-4 border-t border-white/5 bg-[#1a1a1a]">
+              <div className="bg-[#1e1e1e] border border-white/10 rounded-lg overflow-hidden shadow-xl transition-all focus-within:border-[#007acc] group relative">
+                <div className="p-3">
+                  {welcomeChatFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {welcomeChatFiles.map((file, i) => (
+                        <div key={i} className="relative group/file w-10 h-10 rounded border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
+                          {file.url ? (
+                            <img src={file.url} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <File size={12} className="text-white/40" />
+                          )}
+                          <button 
+                            onClick={() => setWelcomeChatFiles(prev => prev.filter((_, idx) => idx !== i))}
+                            className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity hover:bg-red-500"
                           >
-                            <Files size={10} />
-                            <span className="truncate max-w-[100px]">{att.name}</span>
-                          </div>
-                          <button onClick={() => removeAttachment(idx)} className="hover:text-red-400 ml-1">
-                            <Trash2 size={10} />
+                            <X size={8} />
                           </button>
                         </div>
-                        {previewPendingIdx === idx && (
-                          <div className="mt-1 p-1 bg-black/40 border border-white/10 rounded overflow-hidden max-w-[200px] relative">
-                            {att.type.startsWith('image/') ? (
-                              <img 
-                                src={att.content} 
-                                alt={att.name} 
-                                className="w-full h-auto rounded block"
-                                referrerPolicy="no-referrer"
-                                style={{ maxHeight: '150px', objectFit: 'contain' }}
-                              />
-                            ) : (
-                              <pre className="text-[8px] font-mono text-white/50 whitespace-pre-wrap break-all max-h-[100px] overflow-y-auto custom-scrollbar p-1" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                                {att.content}
-                              </pre>
-                            )}
-                            <button 
-                              onClick={() => setPreviewPendingIdx(null)}
-                              className="absolute top-1 right-1 p-0.5 bg-black/60 rounded-full text-white/70 hover:text-white"
-                            >
-                              <Plus size={10} className="rotate-45" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="h-10 w-10 flex items-center justify-center bg-[#3e3e42] hover:bg-[#4d4d52] text-white transition-all active:scale-90 shrink-0 rounded-[2px]"
-                    title="Upload File"
-                  >
-                    <Plus size={18} strokeWidth={3} />
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileUpload} 
-                    className="hidden" 
-                    multiple
+                      ))}
+                    </div>
+                  )}
+                  <textarea 
+                    ref={welcomeChatRef}
+                    placeholder="Ask ReversX"
+                    className="w-full bg-transparent border-none resize-none text-[12px] text-white/90 placeholder-white/30 focus:outline-none min-h-[60px] max-h-[120px] py-0.5 custom-scrollbar transition-all overflow-y-auto"
+                    value={welcomeChatInput}
+                    onChange={(e) => {
+                      setWelcomeChatInput(e.target.value);
+                      if (welcomeChatRef.current) {
+                        welcomeChatRef.current.style.height = 'auto';
+                        welcomeChatRef.current.style.height = `${Math.min(welcomeChatRef.current.scrollHeight, 120)}px`;
+                      }
+                    }}
                   />
-                  <div className="relative flex-1">
-                    <textarea
-                      ref={textareaRef}
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        // Enter to send disabled per user request
-                      }}
-                      placeholder={placeholderText}
-                      className="w-full bg-foreground/[0.02] border-2 border-[#3b82f6] rounded-none py-4 px-6 pr-14 text-sm font-roboto focus:outline-none focus:border-[#3b82f6] focus:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all resize-none min-h-[60px] max-h-[500px] overflow-y-auto text-foreground/90 placeholder:text-foreground/20 placeholder:text-[12px] hide-scrollbar"
-                      rows={1}
-                    />
-                    {isLoading ? (
-                      <button 
-                        onClick={handleStop}
-                        className="absolute bottom-3 right-3 h-8 w-8 flex items-center justify-center bg-[#3e3e42] hover:bg-[#4d4d52] text-white rounded-[2px] cursor-pointer transition-all active:scale-90"
-                        title="Stop"
-                      >
-                        <div className="w-2.5 h-2.5 bg-white rounded-sm" />
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handleSend}
-                        disabled={isLoading || (!input.trim() && pendingAttachments.length === 0)}
-                        className={`absolute bottom-3 right-3 h-8 w-8 flex items-center justify-center bg-[#007ACC] text-white rounded-[2px] cursor-pointer transition-all active:scale-90 ${
-                          isLoading || (!input.trim() && pendingAttachments.length === 0) ? 'opacity-10 grayscale pointer-events-none' : 'hover:bg-[#006BB3]'
-                        }`}
-                      >
-                        <ArrowUp size={18} strokeWidth={3} />
-                      </button>
-                    )}
+                </div>
+                <div className="px-2 py-1.5 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <button 
+                      onClick={() => welcomeChatFileInputRef.current?.click()}
+                      className="p-1 rounded hover:bg-white/5 text-white/40 transition-colors"
+                      title="Attach context"
+                    >
+                      <Plus size={14} />
+                    </button>
+                    <div className="h-3 w-[1px] bg-white/10 mx-0.5" />
+                    <button 
+                      onClick={() => setIsAgentDropdownOpen(!isAgentDropdownOpen)}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/5 text-white/40 hover:text-white transition-all"
+                    >
+                      <Drone size={10} className={isAgentDropdownOpen ? 'text-blue-400' : ''} />
+                      <span className="text-[10px] font-medium">{selectedAgent}</span>
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (!welcomeChatInput.trim() && welcomeChatFiles.length === 0) return;
+                      setInput(welcomeChatInput);
+                      setPendingAttachments(welcomeChatFiles.map(f => ({
+                        name: f.name,
+                        type: f.type,
+                        content: f.url || ''
+                      })));
+                      setWelcomeChatInput('');
+                      setWelcomeChatFiles([]);
+                      handleSend();
+                    }}
+                    className="h-6 w-6 flex items-center justify-center rounded bg-accent/10 text-accent transition-all hover:scale-105 active:scale-95"
+                  >
+                    <ArrowUp size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    ) : activeTab === 'projects' ? (
+        ) : activeTab === 'projects' ? (
+
           <div className="flex-1 flex flex-col overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
               <div className="flex flex-col gap-0.5">
@@ -5467,6 +6333,226 @@ export default function App() {
               <span className="text-[11px] text-foreground/20 font-medium tracking-tight">Your created project will appear here.</span>
             </div>
           </div>
+        ) : activeTab === 'extensions' ? (
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+            <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] font-bold text-foreground/30 uppercase tracking-[0.25em]">Plugin Studio</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-foreground/85">Extension Studio</span>
+                  <span className="bg-accent/10 text-accent text-[9px] px-2 py-0.5 rounded-full font-bold border border-accent/10">{customExtensions.length}</span>
+                </div>
+              </div>
+              
+              {activeExtensionUI && (
+                <button
+                  onClick={() => setActiveExtensionUI(null)}
+                  className="px-2.5 py-1 text-[11px] bg-white/5 hover:bg-white/10 hover:text-white rounded text-foreground/75 border border-white/5 transition-all cursor-pointer"
+                >
+                  &larr; Back to hub
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {activeExtensionUI ? (
+                /* Run Active Extension Frame */
+                <div className="h-full flex flex-col bg-[#141416]">
+                  <div className="px-4 py-2 bg-[#1b1b1f] border-b border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-xs font-semibold text-white truncate max-w-[120px]">{activeExtensionUI.name}</span>
+                    </div>
+                    <span className="text-[9px] text-neutral-500 font-mono">Sandbox: Same-Origin</span>
+                  </div>
+                  <iframe
+                    srcDoc={activeExtensionUI.html}
+                    sandbox="allow-scripts allow-same-origin"
+                    style={{ border: 'none', background: '#18181c' }}
+                    className="w-full flex-1"
+                    title={activeExtensionUI.name}
+                  />
+                </div>
+              ) : (
+                <div className="p-4 space-y-4">
+                  {/* Inline Form to Create/Add custom or raw HTML extensions */}
+                  {showAddExtensionForm && (
+                    <div className="bg-[#212124] border border-white/10 rounded-lg p-4 space-y-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-200">
+                      <h3 className="text-xs font-semibold text-white flex items-center gap-1.5 border-b border-white/5 pb-2">
+                        <Blocks size={13} className="text-accent" />
+                        Add Pure JS/HTML Extension
+                      </h3>
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase font-bold text-neutral-400">Extension Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. My Custom Tool"
+                          className="w-full bg-[#18181a] border border-white/10 text-white text-xs px-2.5 py-1.5 rounded focus:border-accent outline-none"
+                          value={newExtName}
+                          onChange={e => setNewExtName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase font-bold text-neutral-400">Description</label>
+                        <input
+                          type="text"
+                          placeholder="What does it do?"
+                          className="w-full bg-[#18181a] border border-white/10 text-white text-xs px-2.5 py-1.5 rounded focus:border-accent outline-none"
+                          value={newExtDesc}
+                          onChange={e => setNewExtDesc(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] uppercase font-bold text-neutral-400">HTML Code / Paste Source</label>
+                          
+                          {/* Rich File Upload trigger */}
+                          <label className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 bg-accent/10 hover:bg-accent/20 border border-accent/20 rounded cursor-pointer text-[9px] font-medium text-accent transition-all">
+                            <UploadCloud size={10} />
+                            Upload index.html
+                            <input
+                              type="file"
+                              accept=".html"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const r = new FileReader();
+                                  r.onload = (evt) => {
+                                    setNewExtHtml(evt.target?.result as string);
+                                    if (!newExtName) {
+                                      setNewExtName(file.name.replace(/\.[^/.]+$/, ""));
+                                    }
+                                  };
+                                  r.readAsText(file);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <textarea
+                          placeholder="<!DOCTYPE html> ... HTML, CSS and pure JS functions..."
+                          className="w-full h-32 bg-[#18181a] border border-white/10 text-white font-mono text-[10px] p-2.5 rounded focus:border-accent outline-none resize-none"
+                          value={newExtHtml}
+                          onChange={e => setNewExtHtml(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            setShowAddExtensionForm(false);
+                            setNewExtName('');
+                            setNewExtDesc('');
+                            setNewExtHtml('');
+                          }}
+                          className="text-[11px] text-neutral-400 hover:text-white px-2.5 py-1.5 transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!newExtName.trim()) {
+                              alert("Please enter extension name");
+                              return;
+                            }
+                            const extId = "ext_" + Math.random().toString(36).substring(2, 9);
+                            const newExt = {
+                              id: extId,
+                              name: newExtName,
+                              description: newExtDesc || "A custom loaded extension",
+                              html: newExtHtml || `<!DOCTYPE html><html><body><h3>Empty Frame</h3></body></html>`,
+                              isActive: true
+                            };
+                            setCustomExtensions([newExt, ...customExtensions]);
+                            setShowAddExtensionForm(false);
+                            setNewExtName('');
+                            setNewExtDesc('');
+                            setNewExtHtml('');
+                          }}
+                          className="text-[11px] bg-accent hover:bg-blue-600 text-white font-semibold px-4 py-1.5 rounded-[4px] shadow-lg transition-all cursor-pointer"
+                        >
+                          Save Extension
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* List of installed/preset extensions */}
+                  <div className="space-y-3">
+                    <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wide block">My Plugins</span>
+                    {customExtensions.length === 0 ? (
+                      <div className="text-center py-8 text-neutral-500 text-xs">No extensions registered. Click "+" above or upload one!</div>
+                    ) : (
+                      customExtensions.map((ext) => (
+                        <div
+                          key={ext.id}
+                          className="bg-[#1e1e21] border border-white/5 hover:border-white/10 rounded-lg p-3.5 flex flex-col gap-2.5 transition-all relative overflow-hidden group"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <h4 className="text-[13px] font-medium text-white group-hover:text-accent transition-colors">{ext.name}</h4>
+                              <p className="text-[11px] text-neutral-400 leading-relaxed pr-6">{ext.description}</p>
+                            </div>
+                            
+                            <button
+                              onClick={() => {
+                                setCustomExtensions(customExtensions.filter(x => x.id !== ext.id));
+                                if (activeExtensionUI?.id === ext.id) {
+                                  setActiveExtensionUI(null);
+                                }
+                              }}
+                              className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-500/10 text-neutral-500 hover:text-red-500 transition-all shrink-0 cursor-pointer"
+                              title="Delete Plugin"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
+                            <span className="text-[9px] font-mono text-neutral-500 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-accent/55" />
+                              Pure JS API Ready
+                            </span>
+                            
+                            <button
+                              onClick={() => {
+                                setActiveExtensionUI(ext);
+                              }}
+                              className="px-3 py-1 bg-accent/15 hover:bg-accent/25 border border-accent/20 cursor-pointer text-accent rounded text-[11px] font-medium transition-all"
+                            >
+                              Launch UI &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Upload Sample Info Panel */}
+                  <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3.5 space-y-2 mt-4 text-[11px]">
+                    <div className="flex items-center gap-1.5 font-semibold text-accent">
+                      <Zap size={13} />
+                      How do extensions work?
+                    </div>
+                    <p className="text-neutral-400 leading-relaxed text-[11px]">
+                      Extensions run safely inside sandboxed frames and access standard <span className="font-semibold text-accent">window.parent.EditorAPI</span> on current code tabs.
+                    </p>
+                    <div className="bg-neutral-900 border border-neutral-800 p-2 rounded text-[10px] font-mono leading-normal text-neutral-400 select-all overflow-x-auto">
+                      {"const api = window.parent.EditorAPI;\napi.editor.active.insertText('Text');"}
+                    </div>
+                    <p className="text-neutral-500 italic text-[10px]">
+                      We created a sample <strong>sample_extension.html</strong> in your project files! You can copy/download its code and upload it to test.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="px-5 py-3 border-t border-white/5 bg-white/[0.01] flex justify-center items-center">
+              <span className="text-[11px] text-foreground/20 font-medium tracking-tight">Extensions are live-synced to local memory.</span>
+            </div>
+          </div>
 ) : activeTab === 'settings' ? (
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="p-3 border-b border-border flex items-center justify-between">
@@ -5579,6 +6665,21 @@ export default function App() {
                 </div>
               </section>
 
+              {isInstallable && (
+                <section className="bg-accent/5 border border-accent/20 rounded-[4px] p-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <h3 className="text-[12px] font-bold text-accent tracking-normal mb-1">Install ReversX</h3>
+                  <p className="text-[11px] text-foreground-muted mb-3 leading-relaxed">
+                    Install ReversX on your device for a faster, app-like experience with offline access.
+                  </p>
+                  <button
+                    onClick={handleInstallClick}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-accent hover:bg-blue-600 text-white text-[12px] font-bold rounded shadow-lg shadow-accent/20 transition-all active:scale-95"
+                  >
+                    <Download size={14} strokeWidth={2.5} />
+                    INSTALL APP
+                  </button>
+                </section>
+              )}
 
             </div>
           </div>
@@ -5594,7 +6695,7 @@ export default function App() {
         <div 
           onMouseDown={startResizing}
           onTouchStart={startResizing}
-          className={`hidden md:block w-6 -mx-3 bg-transparent cursor-col-resize transition-all z-[100] relative group ${isResizing ? 'bg-accent/5' : ''} touch-none`}
+          className={`hidden w-6 -mx-3 bg-transparent cursor-col-resize transition-all z-[100] relative group ${isResizing ? 'bg-accent/5' : ''} touch-none`}
           title="Drag to resize sidebar"
         >
           {/* Vertical divider line */}
@@ -5615,52 +6716,31 @@ export default function App() {
       {/* Main Content Area */}
       <div className={`
         ${mobileView !== 'chat' ? 'flex flex-1' : 'hidden'} 
-        md:flex md:flex-1 flex-col bg-background overflow-hidden relative
+        flex-col bg-background overflow-hidden relative
       `}>
         {isSidebarMinimized && (
           <button
             onClick={() => setIsSidebarMinimized(false)}
-            className="hidden md:flex absolute top-1/2 left-0 transform -translate-y-1/2 z-[60] w-6 h-12 bg-sidebar hover:bg-foreground/10 border border-border border-l-0 rounded-r-[2px] items-center justify-center text-foreground-muted transition-all shadow-xl"
+            className="hidden absolute top-1/2 left-0 transform -translate-y-1/2 z-[60] w-6 h-12 bg-sidebar hover:bg-foreground/10 border border-border border-l-0 rounded-r-[2px] items-center justify-center text-foreground-muted transition-all shadow-xl"
             title="Expand Sidebar"
           >
             <ChevronRight size={14} />
           </button>
         )}
         {/* Main Editor/Preview Container */}
-        <div className={`flex-1 relative overflow-hidden bg-background flex flex-col md:pt-0 pt-2`}>
+        <div className={`flex-1 relative overflow-hidden bg-background flex flex-col pt-2`}>
           {(!showPreview && mobileView !== 'preview') ? (
             <div className="flex-1 flex font-sans overflow-hidden">
-              {/* Activity Bar (Slim Left Bar) */}
-              <div className="hidden md:flex w-12 flex-col items-center py-4 bg-[#181818] border-r border-[#2b2b2b] shrink-0 gap-4">
-                <button 
-                  onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-                  className={`p-2 transition-colors relative ${isExplorerOpen ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
-                >
-                  <Files size={24} strokeWidth={1.5} />
-                  {isExplorerOpen && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-accent" />}
-                </button>
-                <button className="p-2 text-zinc-500 hover:text-white transition-colors">
-                  <Search size={22} strokeWidth={1.5} />
-                </button>
-                <button className="p-2 text-zinc-500 hover:text-white transition-colors">
-                  <Blocks size={22} strokeWidth={1.5} />
-                </button>
-                <div className="mt-auto flex flex-col gap-4">
-                   <button className="p-2 text-zinc-500 hover:text-white transition-colors">
-                      <Settings size={22} strokeWidth={1.5} />
-                   </button>
-                </div>
-              </div>
 
               {/* VS Code Style File Explorer */}
               <div 
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleFileDrop}
-                className={`flex flex-col bg-[#181818] border-r border-[#2b2b2b] transition-all duration-300 ease-in-out overflow-hidden
-                  ${isExplorerOpen ? 'w-[260px] opacity-100' : 'w-0 opacity-0 pointer-events-none'}
+                className={`flex flex-col bg-[#1f1f1f] border-r border-[#2b2b2b] transition-all duration-300 ease-in-out overflow-hidden
+                  ${isExplorerOpen && !isEditorFullscreen ? 'w-[260px] opacity-100' : 'w-0 opacity-0 pointer-events-none'}
                   ${isDragging ? 'ring-2 ring-accent ring-inset bg-accent/5' : ''}
-                  fixed md:relative inset-y-0 left-0 z-[60] md:z-auto md:opacity-100 md:pointer-events-auto
+                  fixed inset-y-0 left-0 z-[60] opacity-100 pointer-events-auto
                 `}
               >
                 {isDragging && (
@@ -5669,23 +6749,52 @@ export default function App() {
                     <span className="text-[10px] font-extrabold text-accent tracking-[0.2em] uppercase">Drop to Import</span>
                   </div>
                 )}
-                <div className="h-9 flex items-center justify-between px-4 bg-[#181818] shrink-0 select-none">
-                  <span className="text-[11px] font-bold text-[#858585] uppercase tracking-wider">Explorer</span>
+                <div className="h-9 flex items-center justify-between px-4 bg-[#1f1f1f] shrink-0 select-none">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-[#858585] uppercase tracking-wider">Explorer</span>
+                  </div>
                   <div className="flex items-center gap-1">
-                    <button 
-                      onClick={handleOpenLocalFile}
-                      className="p-1 hover:bg-white/5 rounded-[2px] text-zinc-400 hover:text-white transition-colors"
-                      title="Open Local File"
-                    >
-                      <FolderOpen size={14} />
-                    </button>
-                    <button 
-                      onClick={handleUploadImage}
-                      className="p-1 hover:bg-white/5 rounded-[2px] text-zinc-400 hover:text-white transition-colors"
-                      title="Upload Image"
-                    >
-                      <ImageIcon size={14} />
-                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => setIsUploadMenuOpen(!isUploadMenuOpen)}
+                        className={`p-1 hover:bg-white/5 rounded-[2px] transition-colors ${isUploadMenuOpen ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'}`}
+                        title="Upload"
+                      >
+                        <Upload size={14} />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {isUploadMenuOpen && (
+                          <div key="upload-menu">
+                            <div className="fixed inset-0 z-[70]" onClick={() => setIsUploadMenuOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -5 }}
+                              className="absolute right-0 top-full mt-1 w-36 bg-[#252526] border border-[#454545] rounded-[4px] shadow-xl z-[80] overflow-hidden py-1"
+                            >
+                              <button 
+                                onClick={() => { explorerFileInputRef.current?.click(); }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[11px] text-[#cccccc] hover:bg-white/5 hover:text-white transition-colors"
+                                title="Upload multiple files"
+                              >
+                                <FilePlus size={12} strokeWidth={2} />
+                                <span>Upload file</span>
+                              </button>
+                              <button 
+                                onClick={() => { zipInputRef.current?.click(); }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[11px] text-[#cccccc] hover:bg-white/5 hover:text-white transition-colors"
+                                title="Upload ZIP and extract"
+                              >
+                                <Blocks size={12} strokeWidth={2} />
+                                <span>Upload Zip file</span>
+                              </button>
+                            </motion.div>
+                          </div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
                     <button 
                       onClick={handleGithubImport}
                       className="p-1 hover:bg-white/5 rounded-[2px] text-zinc-400 hover:text-white transition-colors"
@@ -5750,7 +6859,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto py-2 custom-scrollbar bg-[#181818]">
+                <div className="flex-1 overflow-y-auto py-2 custom-scrollbar bg-[#1f1f1f]">
                   <div className="px-3 py-1.5 flex items-center justify-between text-[#cccccc] hover:bg-[#2a2d2e] cursor-pointer group mb-1 transition-colors">
                     <div className="flex items-center gap-1.5 font-bold text-[10px] tracking-widest uppercase opacity-70 group-hover:opacity-100 transition-opacity">
                       <ChevronDownIcon size={14} className="text-[#cccccc]" />
@@ -5759,6 +6868,16 @@ export default function App() {
                   </div>
 
                   <div className="space-y-[1px]">
+                    {inlineCreatingType && inlineCreatingParent === '' && (
+                      <InlineCreationInput 
+                        type={inlineCreatingType}
+                        depth={0}
+                        value={inlineCreatingName}
+                        onChange={setInlineCreatingName}
+                        onConfirm={handleConfirmInlineCreate}
+                        onCancel={handleCancelInlineCreate}
+                      />
+                    )}
                     {(() => {
                       const root = buildFileTree(Object.keys(files));
                       return Object.values(root.children).sort((a: any, b: any) => {
@@ -5772,13 +6891,20 @@ export default function App() {
                           activeFileMenu={activeFileMenu}
                           handleFileOpen={(name) => {
                             handleFileOpen(name);
-                            if (window.innerWidth < 768) setIsExplorerOpen(false);
+                            setIsExplorerOpen(false);
                           }}
                           setActiveFileMenu={setActiveFileMenu}
                           handleRenameFile={handleRenameFile}
                           handleDeleteFile={handleDeleteFile}
                           handleDownloadFile={handleDownloadFile}
                           depth={0}
+                          inlineCreatingType={inlineCreatingType}
+                          inlineCreatingParent={inlineCreatingParent}
+                          inlineCreatingName={inlineCreatingName}
+                          setInlineCreatingName={setInlineCreatingName}
+                          onConfirmInlineCreate={handleConfirmInlineCreate}
+                          onCancelInlineCreate={handleCancelInlineCreate}
+                          onInitiateInlineCreateInFolder={handleCreateInFolder}
                         />
                       ));
                     })()}
@@ -5790,36 +6916,104 @@ export default function App() {
               {isExplorerOpen && (
                 <div 
                   onClick={() => setIsExplorerOpen(false)}
-                  className="fixed inset-0 bg-black/50 z-50 md:hidden animate-in fade-in duration-300"
+                  className="fixed inset-0 bg-black/50 z-50 animate-in fade-in duration-300"
                 />
               )}
 
               {/* Explorer Resizer Handle */}
-              {isExplorerOpen && (
+              {isExplorerOpen && !isEditorFullscreen && (
                 <div 
                   onMouseDown={startResizingExplorer}
                   onTouchStart={startResizingExplorer}
-                  className={`hidden md:block w-4 -mx-2 bg-transparent cursor-col-resize transition-all z-20 relative group ${isResizingExplorer ? 'bg-accent/5' : ''} touch-none`}
+                  className={`hidden w-4 -mx-2 bg-transparent cursor-col-resize transition-all z-20 relative group ${isResizingExplorer ? 'bg-accent/5' : ''} touch-none`}
                   title="Drag to resize explorer"
                 >
                   <div className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] bg-white/5 group-hover:bg-accent/40 transition-colors ${isResizingExplorer ? 'bg-accent/60' : ''}`} />
+                  
+                  {/* Fullscreen Toggle Button */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsEditorFullscreen(true); }}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#252526] border border-[#454545] text-zinc-400 hover:text-white hover:border-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl z-30"
+                    title="Fullscreen Editor"
+                  >
+                    <Maximize2 size={12} strokeWidth={2.5} />
+                  </button>
                 </div>
+              )}
+
+              {isEditorFullscreen && (
+                <button 
+                  onClick={() => setIsEditorFullscreen(false)}
+                  className="fixed bottom-6 right-6 w-10 h-10 rounded-full bg-accent text-white shadow-[0_8px_30px_rgb(0,120,212,0.4)] flex items-center justify-center z-[100] animate-in zoom-in-50 duration-300 hover:scale-110 active:scale-95"
+                  title="Exit Fullscreen"
+                >
+                  <ArrowLeftToLine size={20} strokeWidth={2.5} className="rotate-180" />
+                </button>
               )}
 
               {/* Main Editor Area */}
               <div id="main-editor-container" className="flex-1 flex overflow-hidden bg-[#1f1f1f] relative">
+                {isEditorFullscreen && (
+                  <button 
+                    onClick={() => setIsEditorFullscreen(false)}
+                    className="absolute top-4 right-4 z-[100] p-2 bg-[#2d2d2d] hover:bg-[#3d3d3d] text-zinc-400 hover:text-white rounded border border-white/10 transition-all active:scale-95 shadow-2xl group"
+                    title="Exit Fullscreen"
+                  >
+                    <Minimize2 size={16} />
+                  </button>
+                )}
+                
                 {editorPanes.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] p-8 absolute inset-0 z-20">
+                  <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] p-8 absolute inset-0 z-20 overflow-y-auto custom-scrollbar">
+                    {/* PWA Install Button on Landing Page */}
+                    <div className="absolute top-8 right-8 flex flex-col items-end gap-2">
+                      {isInstallable && (
+                        <button 
+                          onClick={handleInstallClick}
+                          className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-full border border-accent/30 transition-all active:scale-95 group animate-in slide-in-from-right-4 duration-500"
+                        >
+                          <Download size={16} className="group-hover:bounce" />
+                          <span className="text-xs font-bold uppercase tracking-wider">Install App</span>
+                        </button>
+                      )}
+                    </div>
+
                     <div className="flex flex-col items-center gap-4 mb-12 select-none">
                       <div className="w-20 h-20 rounded-[20%] bg-gradient-to-br from-[#007acc] to-[#005a9e] shadow-[0_0_40px_rgba(0,122,204,0.3)] flex items-center justify-center border border-white/10">
-                        <CodeIcon size={40} className="text-white drop-shadow-md" />
+                        <svg viewBox="0 0 200 200" width="48" height="48" className="drop-shadow-md">
+                          <defs>
+                            <linearGradient id="g" x1="50%" y1="0%" x2="50%" y2="100%">
+                              <stop offset="0%" stopColor="#ffffff"/>
+                              <stop offset="100%" stopColor="#b0b0b0"/>
+                            </linearGradient>
+                            <filter id="glow">
+                              <feGaussianBlur stdDeviation="2" result="blur"/>
+                              <feMerge>
+                                <feMergeNode in="blur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                              </feMerge>
+                            </filter>
+                          </defs>
+                          <path
+                            d="M 100,10 L 18,188 L 62,158 L 100,132 L 138,158 L 182,188 Z"
+                            fill="none"
+                            stroke="url(#g)"
+                            strokeWidth="8"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                            filter="url(#glow)"
+                          />
+                        </svg>
                       </div>
                       <div className="flex flex-col items-center">
-                        <h1 className="text-4xl font-extrabold text-[#cccccc] tracking-tight">ReversX</h1>
-                        <p className="text-[#858585] text-lg font-medium tracking-wide">Editing evolved.</p>
+                        <h1 className="text-4xl font-extrabold text-[#cccccc] tracking-tight mb-4" style={{ fontFamily: 'Georgia, serif', fontStyle: 'normal', textDecorationLine: 'underline' }}>ReversX</h1>
+                        <div className="px-3 py-1 bg-[#252525] border border-[#333] rounded-md shadow-sm flex items-center gap-1.5" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                          <p className="text-white text-[11px] font-medium tracking-widest uppercase" style={{ fontFamily: '"Times New Roman", Times, serif', fontStyle: 'italic', color: 'white' }}>Code at the speed of thought.</p>
+                          <Zap size={10} className="text-[#007acc] fill-[#007acc]/20" />
+                        </div>
                       </div>
                     </div>
-                    <div className="w-full max-w-sm flex flex-col gap-3">
+                    <div className="w-full max-w-[190px] flex flex-col gap-3">
                       <input 
                         type="file" 
                         ref={folderInputRef} 
@@ -5828,33 +7022,213 @@ export default function App() {
                         {...({ webkitdirectory: "true", directory: "true" } as any)} 
                         onChange={(e) => {
                           const uploadedFiles = Array.from(e.target.files || []);
-                          if (uploadedFiles.length > 0) {
-                            handleImportFiles(uploadedFiles);
-                          }
+                          handleImportFiles(uploadedFiles);
                           // Reset the input value so the same folder can be opened again if needed
+                          e.target.value = '';
+                        }} 
+                      />
+                      <input 
+                        type="file" 
+                        ref={zipInputRef} 
+                        accept=".zip" 
+                        style={{ display: 'none' }} 
+                        onChange={handleZipUpload}
+                      />
+                      <input 
+                        type="file" 
+                        ref={explorerFileInputRef} 
+                        multiple 
+                        style={{ display: 'none' }} 
+                        onChange={handleSingleFileUpload}
+                      />
+                      <input 
+                        type="file" 
+                        ref={welcomeChatFileInputRef} 
+                        multiple 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          const newFiles = files.map(file => ({
+                            name: file.name,
+                            type: file.type,
+                            url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+                          }));
+                          setWelcomeChatFiles(prev => [...prev, ...newFiles]);
                           e.target.value = '';
                         }} 
                       />
                       <button 
                         onClick={() => folderInputRef.current?.click()}
-                        className="w-full px-6 py-4 bg-[#007acc] hover:bg-[#005a9e] shadow-[0_4px_14px_0_rgba(0,122,204,0.39)] text-white/90 hover:text-white rounded flex items-center gap-4 transition-all group border border-white/10"
+                        className="w-full px-6 py-2 bg-[#007acc] hover:bg-[#005a9e] shadow-[0_4px_14px_0_rgba(0,122,204,0.39)] text-white/90 hover:text-white rounded flex items-center gap-4 transition-all group border border-white/10"
                       >
-                        <FolderOpen size={20} className="group-hover:scale-110 transition-transform" />
+                        <FolderOpen size={18} className="group-hover:scale-110 transition-transform" />
                         <div className="flex flex-col items-start gap-0.5 text-left">
-                          <span className="font-semibold text-sm">Import from Computer</span>
-                          <span className="text-[11px] text-white/70">Upload a folder to start editing</span>
+                          <span className="font-semibold text-xs">Import from Computer</span>
+                          <span className="text-[10px] text-white/70">Upload a folder to start editing</span>
                         </div>
                       </button>
                       <button 
                         onClick={() => handleGithubImport()}
-                        className="w-full px-6 py-4 bg-[#2d2d2d] hover:bg-[#3d3d3d] shadow-lg text-[#cccccc] hover:text-white rounded flex items-center gap-4 transition-all group border border-[#444]"
+                        className="w-full px-6 py-2 bg-[#2d2d2d] hover:bg-[#3d3d3d] shadow-lg text-[#cccccc] hover:text-white rounded flex items-center gap-4 transition-all group border border-[#444]"
                       >
-                        <Github size={20} className="group-hover:scale-110 transition-transform" />
+                        <Github size={18} className="group-hover:scale-110 transition-transform" />
                         <div className="flex flex-col items-start gap-0.5 text-left">
-                          <span className="font-semibold text-sm">Import from Github</span>
-                          <span className="text-[11px] text-[#858585]">Import a public repository</span>
+                          <span className="font-semibold text-xs">Import from GitHub</span>
+                          <span className="text-[10px] text-[#858585]">Import a public repository</span>
                         </div>
                       </button>
+                    </div>
+
+                    {/* Cursor-like Chat Box (Dummy) */}
+                    <div className="mt-20 w-full max-w-[500px] px-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
+                      <div className="flex items-center justify-end mb-2 px-1">
+                        <button className="text-white/20 hover:text-white/40 transition-colors">
+                          <Info size={12} />
+                        </button>
+                      </div>
+                      <div className="bg-[#1e1e1e] border border-white/10 rounded-xl overflow-hidden shadow-2xl transition-all hover:border-white/20 focus-within:border-[#007acc] focus-within:ring-1 focus-within:ring-[#007acc]/50 group relative">
+                        <div className="p-4">
+                          {welcomeChatFiles.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {welcomeChatFiles.map((file, i) => (
+                                <div key={i} className="relative group/file w-14 h-14 rounded-md border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center animate-in zoom-in-75 duration-200">
+                                  {file.url ? (
+                                    <img src={file.url} className="w-full h-full object-cover" alt="" />
+                                  ) : (
+                                    <File size={16} className="text-white/40" />
+                                  )}
+                                  <button 
+                                    onClick={() => setWelcomeChatFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity hover:bg-red-500"
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                  <div className="absolute bottom-0 left-0 right-0 py-0.5 px-1 bg-black/40 backdrop-blur-sm">
+                                    <p className="text-[8px] text-white/60 truncate whitespace-nowrap">{file.name}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-start">
+                            <div className="flex-1 min-w-0">
+                              <textarea 
+                                ref={welcomeChatRef}
+                                placeholder="Ask ReversX"
+                                className="w-full bg-transparent border-none resize-none text-[13px] text-white/90 placeholder-white/30 focus:outline-none min-h-[70px] max-h-[150px] py-1 cursor-text custom-scrollbar transition-all overflow-y-auto"
+                                value={welcomeChatInput}
+                                onChange={(e) => {
+                                  setWelcomeChatInput(e.target.value);
+                                  if (welcomeChatRef.current) {
+                                    welcomeChatRef.current.style.height = 'auto';
+                                    welcomeChatRef.current.style.height = `${Math.min(welcomeChatRef.current.scrollHeight, 150)}px`;
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="px-3 py-2 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => welcomeChatFileInputRef.current?.click()}
+                              className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/5 text-[11px] text-white/40 transition-colors cursor-pointer"
+                            >
+                              <Plus size={14} />
+                              <span className="font-medium">Context</span>
+                            </button>
+                            <div className="h-3 w-[1px] bg-white/10 mx-0.5" />
+                            <div className="relative">
+                              <button 
+                                onClick={() => setIsAgentDropdownOpen(!isAgentDropdownOpen)}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all cursor-pointer ${
+                                  isAgentDropdownOpen ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/40 hover:text-white/60'
+                                }`}
+                              >
+                                <Drone size={12} className={isAgentDropdownOpen ? 'text-blue-400' : ''} />
+                                <span className="text-[11px] font-medium">{selectedAgent}</span>
+                                <ChevronDown size={10} className={`transition-transform duration-300 ${isAgentDropdownOpen ? 'rotate-180' : ''}`} />
+                              </button>
+                              
+                              <AnimatePresence>
+                                {isAgentDropdownOpen && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute bottom-full left-0 mb-2 w-32 bg-[#252526] border border-[#454545] rounded shadow-xl overflow-hidden z-[100]"
+                                  >
+                                    <div className="p-1 space-y-0.5">
+                                      {['Agent v1', 'Chat', 'Research'].map((agent) => (
+                                        <button
+                                          key={agent}
+                                          onClick={() => {
+                                            setSelectedAgent(agent);
+                                            setIsAgentDropdownOpen(false);
+                                          }}
+                                          className={`w-full px-2.5 py-1.5 text-left text-[11px] rounded transition-colors flex items-center justify-between group ${
+                                            selectedAgent === agent 
+                                              ? 'bg-[#37373d] text-white' 
+                                              : 'text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white'
+                                          }`}
+                                        >
+                                          <span>{agent}</span>
+                                          {selectedAgent === agent && <div className="w-1 h-1 rounded-full bg-blue-500" />}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <button 
+                               onClick={() => toggleVoiceInput()}
+                               className={`h-7 w-7 flex items-center justify-center rounded-md transition-all cursor-pointer ${isListening ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                             >
+                               <Mic size={14} />
+                             </button>
+                             <div className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                                <span className="text-[9px] text-white/30 font-bold">⌘ K</span>
+                             </div>
+                             <button 
+                               onClick={() => {
+                                 if (!welcomeChatInput.trim() && welcomeChatFiles.length === 0) return;
+                                 setInput(welcomeChatInput);
+                                 setPendingAttachments(welcomeChatFiles.map(f => ({
+                                   name: f.name,
+                                   type: f.type,
+                                   content: f.url || ''
+                                 })));
+                                 setWelcomeChatInput('');
+                                 setWelcomeChatFiles([]);
+                                 setMobileView('chat');
+                                 handleSend();
+                               }}
+                               className="h-7 w-7 flex items-center justify-center rounded-md bg-accent/10 text-accent transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                             >
+                               <ArrowUp size={16} strokeWidth={2.5} />
+                             </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Keyboard shortcuts hints */}
+                      <div className="mt-4 flex items-center justify-center gap-6 opacity-30 select-none">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded border border-white/20 flex items-center justify-center text-[9px] font-bold">L</div>
+                          <span className="text-[10px] uppercase tracking-widest">Search</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded border border-white/20 flex items-center justify-center text-[9px] font-bold">K</div>
+                          <span className="text-[10px] uppercase tracking-widest">Chat</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded border border-white/20 flex items-center justify-center text-[9px] font-bold">I</div>
+                          <span className="text-[10px] uppercase tracking-widest">Edit</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -5911,6 +7285,7 @@ export default function App() {
                           onSetActiveEditor={(editor: any) => activeEditorRef.current = editor}
                           onSaveSelectedAsSnippet={handleSaveSelectedAsSnippet}
                           onCreateNewProject={createNewProject}
+                          onOpenFull={() => setIsEditorFullscreen(true)}
                         />
                       </div>
                       
@@ -5930,7 +7305,7 @@ export default function App() {
                 )}
 
                 {isSplitScreen && editorPanes.length === 1 && (
-                  <div className="hidden md:flex flex-[0.8] flex-col bg-background border-l border-border relative text-foreground">
+                  <div className="hidden flex-[0.8] flex-col bg-background border-l border-border relative text-foreground">
                     <div className="h-11 bg-background border-b border-border flex items-center px-4 justify-between shrink-0">
                       <span className="text-[10px] tracking-widest text-foreground-subtle font-bold">Split Preview</span>
                       <button 
@@ -5977,30 +7352,29 @@ export default function App() {
               {previewDevice === 'laptop' && (
                 <div className="w-full max-w-[1040px] h-3 bg-[#444] rounded-b-2xl border-t border-white/10 shadow-xl shrink-0 -mt-2 z-10 hidden lg:block" />
               )}
-              
-              {/* Floating Action Controls in Preview */}
-              <div className="absolute top-4 right-4 flex items-center gap-2 z-[60]">
+                 {/* Floating Action Controls in Preview */}
+              <div className="absolute top-2 left-4 right-4 flex items-center justify-center gap-6 px-4 py-0.5 bg-[#252526] border border-[#3c3c3c] shadow-lg z-[60] rounded-none">
                 <div className="relative">
                   <button 
                     onClick={() => setShowDeviceMenu(!showDeviceMenu)}
-                    className="h-10 px-4 bg-black/60 hover:bg-black/80 text-white/90 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2 transition-all shadow-lg group"
+                    className="h-5.5 w-5.5 flex items-center justify-center text-[#cccccc] hover:text-white hover:bg-[#37373d] rounded-none transition-all group"
+                    title="Devices"
                   >
-                    <MonitorSmartphone size={16} className="text-accent group-hover:scale-110 transition-transform" />
-                    <span className="text-[10px] font-bold tracking-widest hidden md:block">Device's</span>
+                    <MonitorSmartphone size={11} className="text-[#cccccc] group-hover:text-white group-hover:scale-110 transition-transform" />
                   </button>
                   
                   <AnimatePresence>
                     {showDeviceMenu && (
                       <div key="device-menu">
                         <div 
-                          className="fixed inset-0 z-[65]" 
+                           className="fixed inset-0 z-[65]" 
                           onClick={() => setShowDeviceMenu(false)}
                         />
                         <motion.div
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full mt-2 right-0 bg-[#1a1a1b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-1.5 z-[70] min-w-[140px] backdrop-blur-xl"
+                          className="absolute top-full mt-1 right-0 bg-[#252526] border border-[#3c3c3c] rounded-none shadow-2xl overflow-hidden py-1 z-[70] min-w-[110px]"
                         >
                           {[
                             { id: 'mobile', label: 'Mobile', icon: Smartphone },
@@ -6013,15 +7387,15 @@ export default function App() {
                                 setPreviewDevice(device.id as any);
                                 setShowDeviceMenu(false);
                               }}
-                              className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-all ${
+                              className={`w-full px-3 py-1.5 text-left flex items-center gap-2 transition-all rounded-none ${
                                 previewDevice === device.id 
-                                  ? 'text-accent bg-accent/10 font-bold' 
-                                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                                  ? 'text-white bg-[#007acc] font-semibold' 
+                                  : 'text-[#cccccc] hover:text-white hover:bg-[#37373d]'
                               }`}
                             >
-                              <device.icon size={14} />
-                              <span className="text-[11px] tracking-wide">{device.label}</span>
-                              {previewDevice === device.id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_accent]" />}
+                              <device.icon size={11} />
+                              <span className="text-[10px] tracking-wide">{device.label}</span>
+                              {previewDevice === device.id && <div className="ml-auto w-1 h-1 rounded-full bg-white shadow-[0_0_8px_white]" />}
                             </button>
                           ))}
                         </motion.div>
@@ -6032,17 +7406,17 @@ export default function App() {
 
                 <button 
                   onClick={() => { setShowPreview(false); setMobileView('editor'); }}
-                  className="h-10 px-4 bg-black/60 hover:bg-black/80 text-white/90 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2 transition-all shadow-lg"
+                  className="h-5.5 w-5.5 flex items-center justify-center text-[#cccccc] hover:text-white hover:bg-[#37373d] rounded-none transition-all"
+                  title="Back to Code"
                 >
-                  <ArrowLeftToLine size={16} />
-                  <span className="text-[10px] font-bold tracking-widest hidden md:block">Back to Code</span>
+                  <ArrowLeftToLine size={11} />
                 </button>
                 <button 
                   onClick={() => setPreviewFiles({...files})}
-                  className="w-10 h-10 bg-black/60 hover:bg-black/80 text-white/90 backdrop-blur-md rounded-full border border-white/10 flex items-center justify-center transition-all shadow-lg"
+                  className="h-5.5 w-5.5 flex items-center justify-center text-[#cccccc] hover:text-white hover:bg-[#37373d] rounded-none transition-all"
                   title="Refresh"
                 >
-                  <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+                  <RefreshCw size={11} className={isLoading ? 'animate-spin' : ''} />
                 </button>
               </div>
 
@@ -6060,35 +7434,10 @@ export default function App() {
             </div>
           )}
         </div>
-
-      {/* StatusBar */}
-      <div className="h-6 border-t border-[#2b2b2b] bg-[#181818] flex items-center px-3 justify-between text-[11px] font-medium text-[#cccccc] select-none shrink-0">
-        <div className="flex items-center gap-4 h-full">
-           <div className="flex items-center gap-1 hover:bg-white/10 px-2 h-full cursor-pointer transition-colors">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#28a745]" />
-              <span>Ready</span>
-           </div>
-           <div className="flex items-center gap-1 hover:bg-white/10 px-2 h-full cursor-pointer transition-colors">
-              <GitBranch size={12} />
-              <span>main*</span>
-           </div>
-        </div>
-        <div className="flex items-center gap-3 h-full">
-           <div className="flex items-center hover:bg-white/10 px-2 h-full cursor-pointer transition-colors">
-             Spaces: 2
-           </div>
-           <div className="flex items-center hover:bg-white/10 px-2 h-full cursor-pointer transition-colors">
-             UTF-8
-           </div>
-           <div className="hover:bg-white/10 px-2 h-full flex items-center cursor-pointer transition-colors">
-             <Bell size={12} />
-           </div>
-        </div>
-      </div>
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className={`md:hidden h-14 border-t border-border bg-sidebar flex items-center px-4 overflow-x-auto hide-scrollbar gap-5 z-50 ${mobileView === 'chat' ? 'border-t-0' : ''}`}>
+      <div className={`h-14 border-t border-border bg-sidebar flex items-center px-4 overflow-x-auto hide-scrollbar gap-5 z-50 ${mobileView === 'chat' ? 'border-t-0' : ''}`}>
         <button 
           onClick={() => setMobileView('editor')}
           className={`flex flex-col items-center justify-center w-10 h-10 shrink-0 bg-blue-500/5 border border-blue-500/10 rounded-full transition-all ${mobileView === 'editor' ? 'text-accent border-accent/40' : 'text-foreground/75'}`}
@@ -6096,13 +7445,15 @@ export default function App() {
           <Code size={14} strokeWidth={1.5} />
           <span className="text-[7px] font-bold tracking-tighter">Code</span>
         </button>
-        <button 
-          onClick={() => setMobileView('preview')}
-          className={`flex flex-col items-center justify-center w-10 h-10 shrink-0 bg-blue-500/5 border border-blue-500/10 rounded-full transition-all ${mobileView === 'preview' ? 'text-accent border-accent/40' : 'text-foreground/75'}`}
-        >
-          <Play size={14} strokeWidth={1.5} />
-          <span className="text-[7px] font-bold tracking-tighter">Prev</span>
-        </button>
+        {files[activeFile]?.language === 'html' && (
+          <button 
+            onClick={() => setMobileView('preview')}
+            className={`flex flex-col items-center justify-center w-10 h-10 shrink-0 bg-blue-500/5 border border-blue-500/10 rounded-full transition-all ${mobileView === 'preview' ? 'text-accent border-accent/40' : 'text-foreground/75'}`}
+          >
+            <Play size={14} strokeWidth={1.5} />
+            <span className="text-[7px] font-bold tracking-tighter">Prev</span>
+          </button>
+        )}
         <button 
           onClick={() => { setMobileView('chat'); setActiveTab('settings'); }}
           className={`flex flex-col items-center justify-center w-10 h-10 shrink-0 bg-blue-500/5 border border-blue-500/10 rounded-full transition-all ${mobileView === 'chat' && activeTab === 'settings' ? 'text-accent border-accent/40' : 'text-foreground/75'}`}
@@ -6110,50 +7461,10 @@ export default function App() {
           <Settings size={14} strokeWidth={1.5} />
           <span className="text-[7px] font-bold tracking-tighter">Set</span>
         </button>
-
       </div>
 
-      {/* New File Modal */}
-      <AnimatePresence>
-        {showNewFileModal && (
-          <div key="new-file-modal" className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-lg p-6 shadow-2xl"
-            >
-              <h3 className="text-lg font-normal text-white mb-4">New File</h3>
-              <input
-                autoFocus
-                type="text"
-                value={newFileName}
-                onChange={(e) => setNewFileName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmCreateFile();
-                  if (e.key === 'Escape') setShowNewFileModal(false);
-                }}
-                placeholder="filename.js"
-                className="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:outline-none focus:border-accent mb-6"
-              />
-              <div className="flex justify-end gap-3">
-                <button 
-                  onClick={() => setShowNewFileModal(false)}
-                  className="px-4 py-2 bg-[#3e3e42] hover:bg-[#4d4d52] text-white text-sm transition-colors rounded-[2px]"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={confirmCreateFile}
-                  className="px-6 py-2 bg-[#007ACC] hover:bg-[#006BB3] text-white text-sm font-medium rounded-[2px] transition-colors"
-                >
-                  Create
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+      {/* Modals are handled inline in VS Code style */}
 
       {/* GitHub Export Modal */}
       <AnimatePresence>
@@ -6343,47 +7654,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* New Folder Modal */}
-      <AnimatePresence>
-        {showNewFolderModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-lg p-6 shadow-2xl"
-            >
-              <h3 className="text-lg font-normal text-white mb-4">New Folder</h3>
-              <input
-                autoFocus
-                type="text"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmCreateFolder();
-                  if (e.key === 'Escape') setShowNewFolderModal(false);
-                }}
-                placeholder="folder_name"
-                className="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:outline-none focus:border-accent mb-6"
-              />
-              <div className="flex justify-end gap-3">
-                <button 
-                  onClick={() => setShowNewFolderModal(false)}
-                  className="px-4 py-2 bg-[#3e3e42] hover:bg-[#4d4d52] text-white text-sm transition-colors rounded-[2px]"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={confirmCreateFolder}
-                  className="px-6 py-2 bg-[#007ACC] hover:bg-[#006BB3] text-white text-sm font-medium rounded-[2px] transition-colors"
-                >
-                  Create
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Folders creation handled inline */}
 
       {/* Delete File Modal */}
       <AnimatePresence>
