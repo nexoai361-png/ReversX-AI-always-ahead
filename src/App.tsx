@@ -141,7 +141,8 @@ import { sql } from '@codemirror/lang-sql';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
-import { foldGutter, foldKeymap } from '@codemirror/language';
+import { foldGutter, foldKeymap, StreamLanguage } from '@codemirror/language';
+import { diff } from '@codemirror/legacy-modes/mode/diff';
 import { syncReactState, triggerEvent, EditorAPI } from './services/extensionApi';
 
 
@@ -193,6 +194,10 @@ const getCodeMirrorExtensions = (language: string) => {
       break;
     case 'sql':
       extensions.push(sql());
+      break;
+    case 'diff':
+    case 'patch':
+      extensions.push(StreamLanguage.define(diff));
       break;
     default:
       break;
@@ -300,7 +305,7 @@ const getLanguageFromPath = (name: string) => {
     'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
     'html': 'html', 'css': 'css', 'json': 'json', 'md': 'markdown', 'py': 'python',
     'cpp': 'c_cpp', 'c': 'c', 'java': 'java', 'php': 'php', 'sql': 'sql', 'sh': 'bash',
-    'rs': 'rust', 'go': 'go'
+    'rs': 'rust', 'go': 'go', 'diff': 'diff', 'patch': 'patch'
   };
   return extMap[extension] || 'text';
 };
@@ -1366,23 +1371,7 @@ Instructions: Modify the code according to the task. Return ONLY the modified co
           })}
         </div>
         
-        <div className="flex items-center gap-0.5 px-2 h-full bg-[#181818]">
-          <button 
-            onClick={onCreateNewProject}
-            className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
-            title="New Project"
-          >
-            <Plus size={16} />
-          </button>
-          {language === 'html' && (
-            <button 
-              onClick={onPlay}
-              className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
-              title="Run Code"
-            >
-              <Play size={16} fill="currentColor" />
-            </button>
-          )}
+        <div className="flex items-center gap-2 px-2 h-full bg-[#181818]">
           <button 
             onClick={onToggleSplit}
             className="hidden p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
@@ -1400,79 +1389,44 @@ Instructions: Modify the code according to the task. Return ONLY the modified co
               <X size={16} />
             </button>
           )}
-          <div className="relative">
+
+          <div className="relative inline-flex flex-col items-start cursor-pointer select-none" style={{ touchAction: 'none' }}>
             <button 
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
-              title="More Actions"
+              className="bg-[#2d2d30] border border-[#3e3e42] text-[#cccccc] w-7 h-7 rounded flex items-center justify-center shrink-0 outline-none hover:bg-[#3d3d40] transition-colors"
+              aria-label="Menu"
             >
-              <MoreVertical size={16} />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
+                <path d="M12 3 L3 21 L12 14 L21 21 Z"/>
+              </svg>
             </button>
-            <AnimatePresence>
-              {showMoreMenu && (
-                <div key="more-menu">
-                  <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="absolute right-0 top-full mt-1 w-52 bg-[#181818] border border-[#2b2b2b] shadow-2xl z-50 py-1 overflow-hidden"
+
+            {showMoreMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
+                <div className="absolute top-[100%] right-0 mt-2 bg-[#252526] border border-[#454545] rounded-[6px] shadow-[0_8px_24px_rgba(0,0,0,0.45)] min-w-[180px] p-1 z-50">
+                  <div 
+                    onClick={() => { onCreateNewProject?.(); setShowMoreMenu(false); }}
+                    className="px-3 py-2 text-[#cccccc] text-[13px] flex items-center rounded cursor-pointer whitespace-nowrap transition-all duration-[50ms] hover:bg-[#094771] hover:text-white active:scale-95 active:bg-[#073d5e] outline-none"
                   >
-                    <div className="max-h-[85vh] overflow-y-auto custom-scrollbar">
-                      <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-b border-[#2b2b2b] mb-1">
-                        AI Assistants
-                      </div>
-                      <button
-                        onClick={() => { handleAIAction('refactor'); setShowMoreMenu(false); }}
-                        className="w-full px-3 py-2 text-left text-[12px] text-zinc-400 hover:text-white hover:bg-[#094771] flex items-center gap-2"
-                      >
-                        <Sparkles size={14} className="text-orange-400" />
-                        AI Refactor
-                      </button>
-                      <button
-                        onClick={() => { handleAIAction('document'); setShowMoreMenu(false); }}
-                        className="w-full px-3 py-2 text-left text-[12px] text-zinc-400 hover:text-white hover:bg-[#094771] flex items-center gap-2"
-                      >
-                        <FileText size={14} className="text-blue-400" />
-                        AI Document
-                      </button>
-                      <div className="my-1 border-t border-[#2b2b2b]" />
-                      <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">
-                        Editor Tools
-                      </div>
-                      <button
-                        onClick={() => { handleFormat(); setShowMoreMenu(false); }}
-                        className="w-full px-3 py-2 text-left text-[12px] text-zinc-400 hover:text-white hover:bg-[#094771] flex items-center gap-2 mb-1"
-                      >
-                        <Edit size={14} />
-                        Format Code
-                      </button>
-                      <button
-                        onClick={() => onSaveSelectedAsSnippet?.()}
-                        className="w-full px-3 py-2 text-left text-[12px] text-zinc-400 hover:text-white hover:bg-[#094771] flex items-center gap-2 mb-1"
-                      >
-                        <PlusSquare size={14} className="text-accent" />
-                        Save Selection as Snippet
-                      </button>
-                      <button
-                        onClick={() => { onSetActiveTab?.('snippets'); setShowMoreMenu(false); }}
-                        className="w-full px-3 py-2 text-left text-[12px] text-zinc-400 hover:text-white hover:bg-[#094771] flex items-center gap-2 mb-1"
-                      >
-                        <Blocks size={14} className="text-accent" />
-                        Manage Snippets
-                      </button>
-                      <button
-                        onClick={() => { onShowHelp?.(); setShowMoreMenu(false); }}
-                        className="w-full px-3 py-2 text-left text-[12px] text-zinc-400 hover:text-white hover:bg-[#094771] flex items-center gap-2 mb-1"
-                      >
-                        <HelpCircle size={14} />
-                        Help & Documentation
-                      </button>
-                    </div>
-                  </motion.div>
+                    New project
+                  </div>
+                  <div className="h-[1px] bg-[#3e3e42] mx-2 my-1"></div>
+                  <div 
+                    onClick={() => { handleFormat?.(); setShowMoreMenu(false); }}
+                    className="px-3 py-2 text-[#cccccc] text-[13px] flex items-center rounded cursor-pointer whitespace-nowrap transition-all duration-[50ms] hover:bg-[#094771] hover:text-white active:scale-95 active:bg-[#073d5e] outline-none"
+                  >
+                    Format code
+                  </div>
+                  <div 
+                    onClick={() => { onPlay?.(); setShowMoreMenu(false); }}
+                    className="px-3 py-2 text-[#cccccc] text-[13px] flex items-center rounded cursor-pointer whitespace-nowrap transition-all duration-[50ms] hover:bg-[#094771] hover:text-white active:scale-95 active:bg-[#073d5e] outline-none"
+                  >
+                    Show Preview
+                  </div>
                 </div>
-              )}
-            </AnimatePresence>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1809,19 +1763,19 @@ type TreeNodeType = {
   children: Record<string, TreeNodeType>;
 };
 
-const VSCodeDefaultFileIcon = ({ className = "w-3.5 h-3.5 shrink-0" }: { className?: string }) => (
+const VSCodeDefaultFileIcon = ({ className = "w-4 h-4 shrink-0" }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className={className}>
     <path d="M20.414,2H5V30H27V8.586ZM7,28V4H19v6h6V28Z" fill="#c5c5c5"/>
   </svg>
 );
 
-const VSCodeFolderClosedIcon = ({ className = "w-3.5 h-3.5 shrink-0" }: { className?: string }) => (
+const VSCodeFolderClosedIcon = ({ className = "w-4 h-4 shrink-0" }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className={className}>
     <path d="M27.5,5.5H18.2L16.1,9.7H4.4V26.5H29.6V5.5Zm0,4.2H19.3l1.1-2.1h7.1Z" fill="#c09553"/>
   </svg>
 );
 
-const VSCodeFolderOpenIcon = ({ className = "w-3.5 h-3.5 shrink-0" }: { className?: string }) => (
+const VSCodeFolderOpenIcon = ({ className = "w-4 h-4 shrink-0" }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className={className}>
     <path d="M27.4,5.5H18.2L16.1,9.7H4.3V26.5H29.5V5.5Zm0,18.7H6.6V11.8H27.4Zm0-14.5H19.2l1-2.1h7.1V9.7Z" fill="#dcb67a"/>
     <polygon points="25.7 13.7 0.5 13.7 4.3 26.5 29.5 26.5 25.7 13.7" fill="#dcb67a"/>
@@ -1868,25 +1822,24 @@ const InlineCreationInput = ({ type, depth, value, onChange, onConfirm, onCancel
 
   return (
     <div 
-      className="w-full flex items-center gap-2 py-1 bg-[#1e1e1e] border-y border-white/[0.03] relative"
-      style={{ paddingLeft: `${Math.max(12, depth * 12 + 16)}px`, paddingRight: '16px' }}
+      className="w-full flex items-center gap-1.5 h-[22px] bg-[#37373d]/50 relative"
+      style={{ paddingLeft: `${Math.max(8, depth * 8 + (type === 'file' ? 24 : 8))}px`, paddingRight: '12px' }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc]" />
       
       {depth > 0 && Array.from({ length: depth }).map((_, i) => (
         <div 
           key={i}
-          className="absolute border-l border-white/5 h-full"
-          style={{ left: `${i * 12 + 12}px` }}
+          className="absolute border-l border-white/5 h-full pointer-events-none"
+          style={{ left: `${i * 8 + 12}px` }}
         />
       ))}
       
-      <div className="shrink-0 select-none z-10 ml-0.5">
+      <div className="w-4 h-4 flex items-center justify-center shrink-0 select-none z-10">
         {type === 'folder' ? (
-          <VSCodeFolderOpenIcon className="w-[13px] h-[13px]" />
+          <VSCodeFolderOpenIcon />
         ) : (
-          <VSCodeDefaultFileIcon className="w-[13px] h-[13px]" />
+          <VSCodeDefaultFileIcon />
         )}
       </div>
 
@@ -1904,7 +1857,8 @@ const InlineCreationInput = ({ type, depth, value, onChange, onConfirm, onCancel
           }
         }}
         placeholder={type === 'folder' ? 'Folder Name...' : 'File Name...'}
-        className="flex-1 bg-[#252526] border border-[#007acc] text-white text-[12px] px-1.5 py-[1px] rounded-[1px] focus:outline-none placeholder-white/25 w-full min-w-0 z-10"
+        className="flex-1 bg-[#3c3c3c] border border-[#007acc] text-white text-[13px] px-1 py-[1px] outline-none rounded-none placeholder-white/25 w-full min-w-0 z-10"
+        style={{ fontFamily: 'Segoe UI, system-ui, sans-serif' }}
         onClick={(e) => e.stopPropagation()}
       />
     </div>
@@ -1940,25 +1894,25 @@ const FileTreeItem = React.memo(({
       <div className="w-full flex flex-col">
         <div 
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full flex items-center gap-1.5 py-1 text-[13px] transition-all duration-200 group cursor-pointer text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white relative`}
-          style={{ paddingLeft: `${Math.max(12, depth * 12 + 12)}px`, paddingRight: '12px' }}
+          className={`w-full flex items-center gap-1.5 h-[22px] text-[13px] group cursor-pointer text-[#cccccc] hover:bg-[#2a2d2e] hover:text-[#cccccc] focus:text-white relative`}
+          style={{ paddingLeft: `${Math.max(8, depth * 8 + 8)}px`, paddingRight: '12px' }}
         >
           {/* Indent Guide Line for Folders */}
           {depth > 0 && Array.from({ length: depth }).map((_, i) => (
             <div 
               key={i}
-              className="absolute border-l border-white/5 h-full"
-              style={{ left: `${i * 12 + 12}px` }}
+              className="absolute border-l border-white/5 h-full pointer-events-none"
+              style={{ left: `${i * 8 + 12}px` }}
             />
           ))}
 
-          <div className="w-3.5 flex items-center justify-center opacity-80 group-hover:opacity-100">
-            {isOpen ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
+          <div className="w-4 h-4 flex items-center justify-center opacity-80 group-hover:opacity-100">
+            {isOpen ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
           </div>
-          <div className="transition-transform duration-300 group-hover:scale-110 shrink-0 select-none">
+          <div className="shrink-0 select-none">
             {isOpen ? <VSCodeFolderOpenIcon /> : <VSCodeFolderClosedIcon />}
           </div>
-          <span className="truncate flex-1 font-medium tracking-tight">{node.name}</span>
+          <span className="truncate flex-1 tracking-tight" style={{ fontFamily: 'Segoe UI, system-ui, sans-serif' }}>{node.name}</span>
 
           {/* VS Code Hover Actions on Folders */}
           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 z-20 shrink-0 ml-1">
@@ -2053,34 +2007,32 @@ const FileTreeItem = React.memo(({
   return (
     <div
       onClick={() => handleFileOpen(name)}
-      className={`w-full flex items-center gap-2 py-1 text-[13px] transition-all duration-100 group cursor-pointer relative ${isSelected ? 'bg-[#094771] text-white' : 'text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white'}`}
-      style={{ paddingLeft: `${Math.max(12, depth * 12 + 16)}px`, paddingRight: '16px' }}
+      className={`w-full flex items-center gap-1.5 h-[22px] text-[13px] group cursor-pointer relative ${isSelected ? 'bg-[#37373d] text-white' : 'text-[#cccccc] hover:bg-[#2a2d2e] hover:text-[#cccccc]'}`}
+      style={{ paddingLeft: `${Math.max(8, depth * 8 + 24)}px`, paddingRight: '16px' }}
     >
       {/* Indent Guide Line */}
       {depth > 0 && Array.from({ length: depth }).map((_, i) => (
         <div 
           key={i}
-          className="absolute border-l border-white/5 h-full"
-          style={{ left: `${i * 12 + 12}px` }}
+          className="absolute border-l border-white/5 h-full pointer-events-none"
+          style={{ left: `${i * 8 + 12}px` }}
         />
       ))}
 
-      {isSelected && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-accent shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
-      
       {officialIconUrl ? (
         <img 
           src={officialIconUrl} 
           alt={extension} 
-          className="w-3.5 h-3.5 object-contain transition-transform duration-300 group-hover:scale-110" 
+          className="w-4 h-4 object-contain" 
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
       ) : (
-        <VSCodeDefaultFileIcon className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+        <VSCodeDefaultFileIcon className="w-4 h-4 shrink-0" />
       )}
       
-      <span className={`truncate flex-1 tracking-tight ${isSelected ? 'font-medium' : 'font-normal'}`}>{node.name}</span>
+      <span className="truncate flex-1 tracking-tight leading-none pt-0.5" style={{ fontFamily: 'Segoe UI, system-ui, sans-serif' }}>{node.name}</span>
       
       <div className="relative flex items-center shrink-0">
         <button 
@@ -2731,6 +2683,8 @@ export default function App() {
   const [fileToDelete, setFileToDelete] = useState('');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showQuickOpen, setShowQuickOpen] = useState(false);
+  const [showInlineFileSearch, setShowInlineFileSearch] = useState(false);
+  const [inlineFileSearchQuery, setInlineFileSearchQuery] = useState('');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [activeFileMenu, setActiveFileMenu] = useState<string | null>(null);
@@ -5807,6 +5761,50 @@ export default function App() {
     <IconContext.Provider value={iconThemeName}>
       <div style={{ fontFamily: FONT_OPTIONS[appFontName] }} className={`flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative`}>
       
+      {/* Hidden file inputs available globally */}
+      <input 
+        type="file" 
+        ref={folderInputRef} 
+        style={{ display: 'none' }} 
+        multiple 
+        {...({ webkitdirectory: "true", directory: "true" } as any)} 
+        onChange={(e) => {
+          const uploadedFiles = Array.from(e.target.files || []);
+          handleImportFiles(uploadedFiles);
+          e.target.value = '';
+        }} 
+      />
+      <input 
+        type="file" 
+        ref={zipInputRef} 
+        accept=".zip" 
+        style={{ display: 'none' }} 
+        onChange={handleZipUpload}
+      />
+      <input 
+        type="file" 
+        ref={explorerFileInputRef} 
+        multiple 
+        style={{ display: 'none' }} 
+        onChange={handleSingleFileUpload}
+      />
+      <input 
+        type="file" 
+        ref={welcomeChatFileInputRef} 
+        multiple 
+        style={{ display: 'none' }} 
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          const newFiles = files.map(file => ({
+            name: file.name,
+            type: file.type,
+            url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+          }));
+          setWelcomeChatFiles(prev => [...prev, ...newFiles]);
+          e.target.value = '';
+        }} 
+      />
+
       <AnimatePresence mode="wait">
         {showAgentQuestions && (
           <motion.div 
@@ -6859,15 +6857,46 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto py-2 custom-scrollbar bg-[#1f1f1f]">
-                  <div className="px-3 py-1.5 flex items-center justify-between text-[#cccccc] hover:bg-[#2a2d2e] cursor-pointer group mb-1 transition-colors">
-                    <div className="flex items-center gap-1.5 font-bold text-[10px] tracking-widest uppercase opacity-70 group-hover:opacity-100 transition-opacity">
-                      <ChevronDownIcon size={14} className="text-[#cccccc]" />
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#181818] pb-4">
+                  <div className="pl-1 py-0 h-[22px] pr-3 flex items-center justify-between text-[#cccccc] hover:bg-[#2a2d2e] cursor-pointer group transition-colors">
+                    <div className="flex items-center gap-0.5 font-bold text-[11px] uppercase tracking-wide opacity-100 transition-opacity">
+                      <ChevronDownIcon size={16} className="text-[#cccccc]" />
                       <span>WORKSPACE</span>
+                    </div>
+                    <div className="flex items-center">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setShowInlineFileSearch(!showInlineFileSearch); if(!showInlineFileSearch) setInlineFileSearchQuery(''); }}
+                        className="p-1 md:opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded transition-all text-zinc-400 hover:text-white flex items-center justify-center shrink-0"
+                        title="Search Files"
+                      >
+                        <Search size={12} strokeWidth={2.5} />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-[1px]">
+                  {showInlineFileSearch && (
+                    <div className="px-2 pb-1">
+                      <div className="flex items-center bg-[#2d2d2d] rounded-sm border border-[#3e3e42] px-1.5 focus-within:border-[#007acc] transition-colors">
+                        <Search size={12} className="text-zinc-400 shrink-0" />
+                        <input
+                          type="text"
+                          value={inlineFileSearchQuery}
+                          onChange={(e) => setInlineFileSearchQuery(e.target.value)}
+                          placeholder="Search files..."
+                          className="w-full bg-transparent border-none outline-none text-[11px] text-[#cccccc] py-1 pl-1.5 min-w-0"
+                          autoFocus
+                        />
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setShowInlineFileSearch(false); setInlineFileSearchQuery(''); }}
+                          className="p-0.5 hover:bg-white/10 rounded text-zinc-400 hover:text-white shrink-0 ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col w-full">
                     {inlineCreatingType && inlineCreatingParent === '' && (
                       <InlineCreationInput 
                         type={inlineCreatingType}
@@ -6879,7 +6908,12 @@ export default function App() {
                       />
                     )}
                     {(() => {
-                      const root = buildFileTree(Object.keys(files));
+                      const filteredFiles = Object.keys(files).filter(path => {
+                        if (!showInlineFileSearch || !inlineFileSearchQuery) return true;
+                        // Search by relative path or just name, both are fine. Including case insensitivity.
+                        return path.toLowerCase().includes(inlineFileSearchQuery.toLowerCase());
+                      });
+                      const root = buildFileTree(filteredFiles);
                       return Object.values(root.children).sort((a: any, b: any) => {
                         if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
                         return a.name.localeCompare(b.name);
@@ -7014,49 +7048,6 @@ export default function App() {
                       </div>
                     </div>
                     <div className="w-full max-w-[190px] flex flex-col gap-3">
-                      <input 
-                        type="file" 
-                        ref={folderInputRef} 
-                        style={{ display: 'none' }} 
-                        multiple 
-                        {...({ webkitdirectory: "true", directory: "true" } as any)} 
-                        onChange={(e) => {
-                          const uploadedFiles = Array.from(e.target.files || []);
-                          handleImportFiles(uploadedFiles);
-                          // Reset the input value so the same folder can be opened again if needed
-                          e.target.value = '';
-                        }} 
-                      />
-                      <input 
-                        type="file" 
-                        ref={zipInputRef} 
-                        accept=".zip" 
-                        style={{ display: 'none' }} 
-                        onChange={handleZipUpload}
-                      />
-                      <input 
-                        type="file" 
-                        ref={explorerFileInputRef} 
-                        multiple 
-                        style={{ display: 'none' }} 
-                        onChange={handleSingleFileUpload}
-                      />
-                      <input 
-                        type="file" 
-                        ref={welcomeChatFileInputRef} 
-                        multiple 
-                        style={{ display: 'none' }} 
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          const newFiles = files.map(file => ({
-                            name: file.name,
-                            type: file.type,
-                            url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
-                          }));
-                          setWelcomeChatFiles(prev => [...prev, ...newFiles]);
-                          e.target.value = '';
-                        }} 
-                      />
                       <button 
                         onClick={() => folderInputRef.current?.click()}
                         className="w-full px-6 py-2 bg-[#007acc] hover:bg-[#005a9e] shadow-[0_4px_14px_0_rgba(0,122,204,0.39)] text-white/90 hover:text-white rounded flex items-center gap-4 transition-all group border border-white/10"
